@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
 
 const CartContext = createContext();
 
@@ -11,31 +11,59 @@ export const useCart = () => {
 };
 
 export const CartProvider = ({ children }) => {
-  const [cartItems, setCartItems] = useState([]);
+  const [cartItems, setCartItems] = useState(() => {
+    // Load cart from localStorage on initialization
+    try {
+      const savedCart = localStorage.getItem('cartItems');
+      return savedCart ? JSON.parse(savedCart) : [];
+    } catch (error) {
+      console.error('Error loading cart from localStorage:', error);
+      return [];
+    }
+  });
 
-  // Add item to cart
-  const addToCart = (product, quantity, rentalStartDate, rentalEndDate) => {
-    const existingItem = cartItems.find(item => 
-      item.product._id === product._id &&
-      item.rentalStartDate === rentalStartDate &&
-      item.rentalEndDate === rentalEndDate
+  // Save cart to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem('cartItems', JSON.stringify(cartItems));
+    } catch (error) {
+      console.error('Error saving cart to localStorage:', error);
+    }
+  }, [cartItems]);
+
+  // Add item to cart - accepts object with product, quantity, startDate, endDate, pricingType, price
+  const addToCart = (item) => {
+    const { product, quantity, startDate, endDate, pricingType, price } = item;
+    
+    console.log('Adding to cart:', { product: product?.name, quantity, startDate, endDate, pricingType, price });
+    
+    const existingItemIndex = cartItems.findIndex(cartItem => 
+      cartItem.product?._id === product?._id &&
+      cartItem.startDate === startDate &&
+      cartItem.endDate === endDate
     );
 
-    if (existingItem) {
-      setCartItems(cartItems.map(item =>
-        item.product._id === product._id &&
-        item.rentalStartDate === rentalStartDate &&
-        item.rentalEndDate === rentalEndDate
-          ? { ...item, quantity: item.quantity + quantity }
-          : item
-      ));
+    if (existingItemIndex !== -1) {
+      // Update existing item quantity
+      const updatedCart = [...cartItems];
+      updatedCart[existingItemIndex] = {
+        ...updatedCart[existingItemIndex],
+        quantity: updatedCart[existingItemIndex].quantity + quantity,
+        price: updatedCart[existingItemIndex].price + price
+      };
+      setCartItems(updatedCart);
     } else {
-      setCartItems([...cartItems, {
+      // Add new item
+      const newItem = {
         product,
         quantity,
-        rentalStartDate,
-        rentalEndDate
-      }]);
+        startDate,
+        endDate,
+        pricingType,
+        price
+      };
+      console.log('New cart item:', newItem);
+      setCartItems([...cartItems, newItem]);
     }
   };
 

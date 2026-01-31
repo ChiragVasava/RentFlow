@@ -10,8 +10,7 @@ const Products = () => {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     search: '',
-    category: '',
-    isPublished: true
+    category: ''
   });
   const [categories] = useState([
     'Electronics',

@@ -38,8 +38,8 @@ exports.getAllProducts = async (req, res) => {
       ];
     }
 
-    // For non-admin users, only show published products
-    if (req.user && req.user.role === 'customer') {
+    // For non-authenticated users and customers, only show published products
+    if (!req.user || (req.user && req.user.role === 'customer')) {
       query.isPublished = true;
     }
 

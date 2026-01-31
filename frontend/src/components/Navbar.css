@@ -73,12 +73,13 @@
 
 .cart-link {
   position: relative;
+  right: 10px;
 }
 
 .cart-badge {
   position: absolute;
   top: -5px;
-  right: -5px;
+  right: -1px;
   background: var(--danger);
   color: var(--white);
   border-radius: 50%;

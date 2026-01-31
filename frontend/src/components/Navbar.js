@@ -36,33 +36,39 @@ const Navbar = () => {
           {!isAuthenticated && (
             <li><Link to="/" className="navbar-link">Home</Link></li>
           )}
-          <li><Link to="/products" className="navbar-link">Shop</Link></li>
           
           {isAuthenticated ? (
             <>
-              <li><Link to="/dashboard" className="navbar-link">
-                <FaTachometerAlt /> Dashboard
-              </Link></li>
+              <li><Link to="/products" className="navbar-link">Shop</Link></li>
+              
+              {user?.role === 'customer' && (
+                <>
+                  <li><Link to="/dashboard" className="navbar-link">
+                    <FaTachometerAlt /> Dashboard
+                  </Link></li>
+                  <li><Link to="/cart" className="navbar-link cart-link">
+                    <FaShoppingCart />
+                    {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
+                  </Link></li>
+                </>
+              )}
               
               {user?.role === 'vendor' && (
                 <>
+                  <li><Link to="/dashboard" className="navbar-link">
+                    <FaTachometerAlt /> Dashboard
+                  </Link></li>
                   <li><Link to="/vendor/products" className="navbar-link">My Products</Link></li>
-                  <li><Link to="/vendor/orders" className="navbar-link">My Orders</Link></li>
                 </>
               )}
               
               {user?.role === 'admin' && (
                 <>
-                  <li><Link to="/admin/dashboard" className="navbar-link">Admin</Link></li>
+                  <li><Link to="/dashboard" className="navbar-link">
+                    <FaTachometerAlt /> Dashboard
+                  </Link></li>
                   <li><Link to="/admin/users" className="navbar-link">Users</Link></li>
                 </>
-              )}
-              
-              {user?.role === 'customer' && (
-                <li><Link to="/cart" className="navbar-link cart-link">
-                  <FaShoppingCart />
-                  {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
-                </Link></li>
               )}
               
               <li className="navbar-dropdown">
