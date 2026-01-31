@@ -11,6 +11,49 @@
   margin-bottom: var(--spacing-md);
 }
 
+/* Notification Banner */
+.notification-banner {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 1px solid #fbbf24;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-top: 24px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  color: #92400e;
+}
+
+.notification-banner svg {
+  font-size: 24px;
+  color: #f59e0b;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.notification-banner strong {
+  display: block;
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+
+.notification-banner p {
+  margin: 0;
+  font-size: 14px;
+  color: #78350f;
+}
+
+.link-inline {
+  color: #2563eb;
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+.link-inline:hover {
+  color: #1d4ed8;
+}
+
 .quick-actions {
   margin-top: var(--spacing-xl);
   padding: var(--spacing-lg);

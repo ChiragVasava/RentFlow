@@ -44,6 +44,7 @@ exports.getAllProducts = async (req, res) => {
     }
 
     // If vendor is logged in, show only their products (both published and unpublished)
+    // Admin can see all products regardless of publish status
     if (req.user && req.user.role === 'vendor') {
       query.vendor = req.user.id;
     }

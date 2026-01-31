@@ -31,17 +31,31 @@ export const CartProvider = ({ children }) => {
     }
   }, [cartItems]);
 
-  // Add item to cart - accepts object with product, quantity, startDate, endDate, pricingType, price
+  // Add item to cart - accepts object with product, quantity, startDate, endDate, pricingType, price, type
   const addToCart = (item) => {
-    const { product, quantity, startDate, endDate, pricingType, price } = item;
+    const { product, quantity, startDate, endDate, pricingType, price, type = 'rent' } = item;
     
-    console.log('Adding to cart:', { product: product?.name, quantity, startDate, endDate, pricingType, price });
+    console.log('Adding to cart:', { 
+      product: product?.name, 
+      quantity, 
+      type,
+      startDate, 
+      endDate, 
+      pricingType, 
+      price 
+    });
     
-    const existingItemIndex = cartItems.findIndex(cartItem => 
-      cartItem.product?._id === product?._id &&
-      cartItem.startDate === startDate &&
-      cartItem.endDate === endDate
-    );
+    // For sale items, match by product ID only
+    // For rental items, match by product ID and dates
+    const existingItemIndex = cartItems.findIndex(cartItem => {
+      if (type === 'buy') {
+        return cartItem.product?._id === product?._id && cartItem.type === 'buy';
+      }
+      return cartItem.product?._id === product?._id &&
+        cartItem.startDate === startDate &&
+        cartItem.endDate === endDate &&
+        cartItem.type === 'rent';
+    });
 
     if (existingItemIndex !== -1) {
       // Update existing item quantity
@@ -57,6 +71,7 @@ export const CartProvider = ({ children }) => {
       const newItem = {
         product,
         quantity,
+        type: type || 'rent',
         startDate,
         endDate,
         pricingType,

@@ -19,9 +19,19 @@ const productSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  availabilityType: {
+    type: String,
+    enum: ['rent', 'sale', 'both'],
+    default: 'rent',
+    required: true
+  },
   isRentable: {
     type: Boolean,
     default: true
+  },
+  isSellable: {
+    type: Boolean,
+    default: false
   },
   quantityOnHand: {
     type: Number,

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { 
   FaPlus, FaEdit, FaTrash, FaEye, FaEyeSlash, FaBox, FaSave, FaTimes, 
-  FaCog, FaInfoCircle 
+  FaCog, FaInfoCircle, FaClock 
 } from 'react-icons/fa';
 import { productsAPI } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
@@ -731,7 +731,7 @@ const ManageProducts = () => {
             <FaBox /> My Products
           </h1>
           <p className="page-subtitle">
-            Manage your rental products
+            Manage your rental products • {products.filter(p => p.isPublished).length} Published • {products.filter(p => !p.isPublished).length} Pending Approval
           </p>
         </div>
         <button 
@@ -755,63 +755,74 @@ const ManageProducts = () => {
           </button>
         </div>
       ) : (
-        <div className="products-grid">
-          {products.map((product) => (
-            <div key={product._id} className="product-card card">
-              <div className="product-image">
-                <img src={getPrimaryImage(product)} alt={product.name} />
-                <div className="product-status">
-                  {product.isPublished ? (
-                    <span className="status-badge published">
-                      <FaEye /> Published
-                    </span>
-                  ) : (
-                    <span className="status-badge draft">
-                      <FaEyeSlash /> Draft
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="product-info">
-                <h3 className="product-name">{product.name}</h3>
-                <p className="product-category">{product.category}</p>
-                
-                <div className="product-details">
-                  <div className="detail-row">
-                    <span className="label">Stock:</span>
-                    <span className="value">{product.quantityOnHand} units</span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="label">Price:</span>
-                    <span className="value">₹{product.salesPrice?.toLocaleString()}</span>
-                  </div>
-                  {product.rentalPricing?.daily > 0 && (
-                    <div className="detail-row">
-                      <span className="label">Daily Rental:</span>
-                      <span className="value">₹{product.rentalPricing.daily?.toLocaleString()}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="product-actions">
-                <button
-                  className="btn btn-outline btn-sm"
-                  onClick={() => handleEdit(product)}
-                >
-                  <FaEdit /> Edit
-                </button>
-                <button
-                  className="btn btn-outline btn-sm btn-danger"
-                  onClick={() => handleDelete(product._id)}
-                >
-                  <FaTrash /> Delete
-                </button>
-              </div>
+        <>
+          {products.filter(p => !p.isPublished).length > 0 && (
+            <div className="info-banner">
+              <FaClock />
+              <span>
+                You have {products.filter(p => !p.isPublished).length} product(s) waiting for admin approval before they appear in the shop.
+              </span>
             </div>
-          ))}
-        </div>
+          )}
+
+          <div className="products-grid">
+            {products.map((product) => (
+              <div key={product._id} className="product-card card">
+                <div className="product-image">
+                  <img src={getPrimaryImage(product)} alt={product.name} />
+                  <div className="product-status">
+                    {product.isPublished ? (
+                      <span className="status-badge published">
+                        <FaEye /> Published
+                      </span>
+                    ) : (
+                      <span className="status-badge draft">
+                        <FaEyeSlash /> Pending Approval
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="product-info">
+                  <h3 className="product-name">{product.name}</h3>
+                  <p className="product-category">{product.category}</p>
+                  
+                  <div className="product-details">
+                    <div className="detail-row">
+                      <span className="label">Stock:</span>
+                      <span className="value">{product.quantityOnHand} units</span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="label">Price:</span>
+                      <span className="value">₹{product.salesPrice?.toLocaleString()}</span>
+                    </div>
+                    {product.rentalPricing?.daily > 0 && (
+                      <div className="detail-row">
+                        <span className="label">Daily Rental:</span>
+                        <span className="value">₹{product.rentalPricing.daily?.toLocaleString()}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="product-actions">
+                  <button
+                    className="btn btn-outline btn-sm"
+                    onClick={() => handleEdit(product)}
+                  >
+                    <FaEdit /> Edit
+                  </button>
+                  <button
+                    className="btn btn-outline btn-sm btn-danger"
+                    onClick={() => handleDelete(product._id)}
+                  >
+                    <FaTrash /> Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

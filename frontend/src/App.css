@@ -64,11 +64,28 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
   transition: var(--transition);
+  text-decoration: none;
+  color: inherit;
+  display: block;
 }
 
 .stat-card:hover {
   transform: translateY(-5px);
   box-shadow: var(--shadow-lg);
+}
+
+.stat-card.clickable {
+  cursor: pointer;
+}
+
+.stat-card.clickable:hover {
+  box-shadow: 0 8px 24px rgba(44, 95, 126, 0.2);
+}
+
+.stat-subtext {
+  color: var(--text-light);
+  font-size: 0.85rem;
+  margin-top: var(--spacing-xs);
 }
 
 .stat-icon {

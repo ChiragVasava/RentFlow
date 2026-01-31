@@ -86,44 +86,60 @@ const Cart = () => {
             const startDate = item.startDate;
             const endDate = item.endDate;
             const pricingType = item.pricingType || 'daily';
+            const itemType = item.type || 'rent';
 
             return (
               <div key={`${product._id}-${index}`} className="cart-item card">
                 <div className="cart-item-image">
                   <img src={getPrimaryImage(product)} alt={product.name || 'Product'} />
+                  {itemType === 'buy' && (
+                    <span className="item-type-badge sale-badge">SALE</span>
+                  )}
+                  {itemType === 'rent' && (
+                    <span className="item-type-badge rent-badge">RENT</span>
+                  )}
                 </div>
 
                 <div className="cart-item-details">
                   <h3 className="cart-item-name">{product.name || 'Unknown Product'}</h3>
                   <p className="cart-item-category">{product.category || 'N/A'}</p>
                   
-                  <div className="rental-period">
-                    <div className="rental-date">
-                      <span className="label">From:</span>
-                      <span className="value">
-                        {startDate ? new Date(startDate).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric'
-                        }) : 'N/A'}
-                      </span>
+                  {itemType === 'rent' && (
+                    <div className="rental-period">
+                      <div className="rental-date">
+                        <span className="label">From:</span>
+                        <span className="value">
+                          {startDate ? new Date(startDate).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          }) : 'N/A'}
+                        </span>
+                      </div>
+                      <div className="rental-date">
+                        <span className="label">To:</span>
+                        <span className="value">
+                          {endDate ? new Date(endDate).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          }) : 'N/A'}
+                        </span>
+                      </div>
+                      <div className="rental-duration">
+                        <span className="duration-badge">
+                          {pricingType.charAt(0).toUpperCase() + pricingType.slice(1)} Rental
+                        </span>
+                      </div>
                     </div>
-                    <div className="rental-date">
-                      <span className="label">To:</span>
-                      <span className="value">
-                        {endDate ? new Date(endDate).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric'
-                        }) : 'N/A'}
-                      </span>
+                  )}
+
+                  {itemType === 'buy' && (
+                    <div className="purchase-info">
+                      <span className="purchase-label">One-time Purchase</span>
+                      <span className="unit-price">₹{(price / quantity).toLocaleString()} per unit</span>
                     </div>
-                    <div className="rental-duration">
-                      <span className="duration-badge">
-                        {pricingType.charAt(0).toUpperCase() + pricingType.slice(1)} Rental
-                      </span>
-                    </div>
-                  </div>
+                  )}
 
                   <div className="cart-item-pricing">
                     <span className="quantity-label">Quantity: {quantity}</span>

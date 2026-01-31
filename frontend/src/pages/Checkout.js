@@ -129,12 +129,15 @@ const Checkout = () => {
     setLoading(true);
 
     try {
-      console.log('Cart items before order:', cartItems);
+      console.log('=== Starting Order Placement ===');
+      console.log('Cart items:', cartItems);
 
       // Validate and prepare cart items
       const validatedItems = [];
       
       for (const item of cartItems) {
+        console.log('Processing cart item:', item);
+
         // Check if product exists and has an ID
         if (!item.product) {
           toast.error('Invalid cart item found. Please refresh your cart.');
@@ -152,17 +155,28 @@ const Checkout = () => {
           return;
         }
 
+        // Validate dates
+        if (!item.startDate || !item.endDate) {
+          console.error('Missing dates for item:', item);
+          toast.error('Some cart items are missing rental dates. Please remove and re-add them.');
+          setLoading(false);
+          return;
+        }
+
         // Verify the product exists by fetching it
         try {
           await productsAPI.getOne(productId);
           
           // Backend expects rentalStartDate and rentalEndDate (not startDate/endDate)
-          validatedItems.push({
+          const quotationItem = {
             product: productId,
-            quantity: item.quantity,
+            quantity: item.quantity || 1,
             rentalStartDate: item.startDate,
             rentalEndDate: item.endDate
-          });
+          };
+
+          console.log('Validated item:', quotationItem);
+          validatedItems.push(quotationItem);
         } catch (error) {
           console.error('Product not found:', productId, error);
           toast.error(`Product not found. Please remove it from cart and try again.`);
@@ -181,19 +195,23 @@ const Checkout = () => {
 
       const response = await quotationsAPI.create(quotationData);
 
+      console.log('Quotation created successfully:', response.data);
+
       setStep(3);
+      toast.success('Order placed successfully! Redirecting to your quotations...');
       
       // Clear cart after successful quotation
       setTimeout(() => {
         clearCart();
-        navigate('/orders');
+        navigate('/quotations');
       }, 2000);
 
-      toast.success('Order placed successfully! Redirecting to your orders...');
     } catch (error) {
-      console.error('Error creating quotation:', error);
+      console.error('=== Error creating quotation ===');
+      console.error('Error:', error);
       console.error('Error response:', error.response?.data);
-      toast.error(error.response?.data?.message || 'Failed to place order. Please try again.');
+      const errorMessage = error.response?.data?.message || 'Failed to place order. Please try again.';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

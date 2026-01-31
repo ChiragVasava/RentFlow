@@ -61,7 +61,11 @@ export const quotationsAPI = {
   getOne: (id) => api.get(`/quotations/${id}`),
   create: (data) => api.post('/quotations', data),
   update: (id, data) => api.put(`/quotations/${id}`, data),
-  confirm: (id) => api.put(`/quotations/${id}/confirm`),
+  submit: (id) => api.put(`/quotations/${id}/submit`),
+  approve: (id, data) => api.put(`/quotations/${id}/approve`, data),
+  reject: (id, data) => api.put(`/quotations/${id}/reject`, data),
+  counterOffer: (id, data) => api.post(`/quotations/${id}/counter-offer`, data),
+  convertToOrder: (id) => api.post(`/quotations/${id}/convert-to-order`),
   delete: (id) => api.delete(`/quotations/${id}`)
 };
 
@@ -74,6 +78,17 @@ export const ordersAPI = {
   updatePayment: (id, data) => api.put(`/orders/${id}/payment`, data),
   cancel: (id) => api.put(`/orders/${id}/cancel`),
   getMyOrders: () => api.get('/orders/customer/my-orders')
+};
+
+// Sale Orders API
+export const saleOrdersAPI = {
+  getAll: (params) => api.get('/sale-orders', { params }),
+  getOne: (id) => api.get(`/sale-orders/${id}`),
+  create: (data) => api.post('/sale-orders', data),
+  updateStatus: (id, data) => api.put(`/sale-orders/${id}/status`, data),
+  cancel: (id, data) => api.put(`/sale-orders/${id}/cancel`, data),
+  updatePayment: (id, data) => api.put(`/sale-orders/${id}/payment`, data),
+  delete: (id) => api.delete(`/sale-orders/${id}`)
 };
 
 // Invoices API

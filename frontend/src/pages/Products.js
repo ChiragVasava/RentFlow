@@ -153,25 +153,48 @@ const Products = () => {
                 )}
 
                 <div className="product-pricing">
-                  <div className="price-info">
-                    <span className="price-label">Starting from</span>
-                    <span className="price-value">
-                      ₹{product.rentalPricing?.daily || product.rentalPricing?.hourly || 0}
-                      <span className="price-unit">/{product.rentalPricing?.daily ? 'day' : 'hr'}</span>
-                    </span>
-                  </div>
+                  {product.availabilityType === 'sale' || product.availabilityType === 'both' ? (
+                    <div className="price-info">
+                      <span className="price-label">Sale Price</span>
+                      <span className="price-value">
+                        ₹{product.salesPrice || 0}
+                      </span>
+                    </div>
+                  ) : null}
+                  {product.availabilityType === 'rent' || product.availabilityType === 'both' ? (
+                    <div className="price-info">
+                      <span className="price-label">Rental from</span>
+                      <span className="price-value">
+                        ₹{product.rentalPricing?.daily || product.rentalPricing?.hourly || 0}
+                        <span className="price-unit">/{product.rentalPricing?.daily ? 'day' : 'hr'}</span>
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="product-actions">
-                  <button
-                    className="btn btn-primary"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/products/${product._id}`);
-                    }}
-                  >
-                    <FaShoppingCart /> Rent Now
-                  </button>
+                  {(product.availabilityType === 'sale' || product.availabilityType === 'both') && (
+                    <button
+                      className="btn btn-success"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/products/${product._id}?action=buy`);
+                      }}
+                    >
+                      <FaShoppingCart /> Buy Now
+                    </button>
+                  )}
+                  {(product.availabilityType === 'rent' || product.availabilityType === 'both') && (
+                    <button
+                      className="btn btn-primary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/products/${product._id}?action=rent`);
+                      }}
+                    >
+                      <FaShoppingCart /> Rent Now
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

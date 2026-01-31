@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { FaStar, FaStarHalfAlt, FaRegStar, FaShoppingCart, FaCalendarAlt, FaTag, FaCheckCircle, FaTimesCircle, FaHeart, FaRegHeart, FaShare } from 'react-icons/fa';
 import { productsAPI } from '../utils/api';
@@ -10,6 +10,7 @@ import './ProductDetails.css';
 const ProductDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { addToCart } = useCart();
   const { user } = useAuth();
   
@@ -23,17 +24,20 @@ const ProductDetails = () => {
   const [totalPrice, setTotalPrice] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
   const [isAvailable, setIsAvailable] = useState(true);
+  const [mode, setMode] = useState('rent'); // 'rent' or 'buy'
 
   useEffect(() => {
     fetchProduct();
-  }, [id]);
+  }, [id, searchParams]);
 
   useEffect(() => {
-    if (startDate && endDate && product) {
+    if (mode === 'rent' && startDate && endDate && product) {
       calculatePrice();
       checkAvailability();
+    } else if (mode === 'buy' && product) {
+      setTotalPrice(product.salesPrice * quantity);
     }
-  }, [startDate, endDate, quantity, selectedPricingType, product]);
+  }, [startDate, endDate, quantity, selectedPricingType, product, mode]);
 
   const fetchProduct = async () => {
     try {
@@ -46,6 +50,21 @@ const ProductDetails = () => {
       const primaryIndex = productData.images?.findIndex(img => img.isPrimary);
       if (primaryIndex > -1) {
         setSelectedImage(primaryIndex);
+      }
+
+      // Set initial mode based on product availability and query params
+      const action = searchParams.get('action');
+      if (action === 'buy' && productData.isSellable) {
+        setMode('buy');
+      } else if (action === 'rent' && productData.isRentable) {
+        setMode('rent');
+      } else {
+        // Default to rent if rentable, otherwise buy
+        if (productData.isRentable) {
+          setMode('rent');
+        } else if (productData.isSellable) {
+          setMode('buy');
+        }
       }
     } catch (error) {
       console.error('Error fetching product:', error);
@@ -102,31 +121,44 @@ const ProductDetails = () => {
 
   const handleAddToCart = () => {
     if (!user) {
-      toast.info('Please login to rent items');
+      toast.info('Please login to continue');
       navigate('/login');
       return;
     }
 
-    if (!startDate || !endDate) {
-      toast.error('Please select rental dates');
-      return;
+    if (mode === 'rent') {
+      if (!startDate || !endDate) {
+        toast.error('Please select rental dates');
+        return;
+      }
+
+      if (!isAvailable) {
+        toast.error('Product is not available for selected dates');
+        return;
+      }
+
+      addToCart({
+        product,
+        quantity,
+        startDate,
+        endDate,
+        pricingType: selectedPricingType,
+        price: totalPrice,
+        type: 'rent'
+      });
+
+      toast.success('Added to cart!');
+    } else {
+      // Buy mode
+      addToCart({
+        product,
+        quantity,
+        price: product.salesPrice * quantity,
+        type: 'buy'
+      });
+
+      toast.success('Added to cart!');
     }
-
-    if (!isAvailable) {
-      toast.error('Product is not available for selected dates');
-      return;
-    }
-
-    addToCart({
-      product,
-      quantity,
-      startDate,
-      endDate,
-      pricingType: selectedPricingType,
-      price: totalPrice
-    });
-
-    toast.success('Added to cart!');
   };
 
   const renderRating = (rating) => {
@@ -252,14 +284,14 @@ const ProductDetails = () => {
           <div className="product-info">
             <div className="product-header">
               <h1 className="product-name">{product.name}</h1>
-              <div className="product-rating">
+              {/* <div className="product-rating">
                 <div className="stars">
                   {renderRating(product.ratings?.average || 0)}
                 </div>
                 <span className="rating-text">
                   {product.ratings?.average?.toFixed(1) || 0} ({product.ratings?.count || 0} reviews)
                 </span>
-              </div>
+              </div> */}
             </div>
 
             <div className="product-meta">
@@ -284,135 +316,225 @@ const ProductDetails = () => {
 
             <p className="product-description">{product.description}</p>
 
-            {/* Pricing Section */}
-            <div className="pricing-section">
-              <h3>Rental Pricing</h3>
-              <div className="pricing-options">
-                {product.rentalPricing?.hourly > 0 && (
-                  <div 
-                    className={`pricing-card ${selectedPricingType === 'hourly' ? 'selected' : ''}`}
-                    onClick={() => setSelectedPricingType('hourly')}
-                  >
-                    <span className="price-label">Hourly</span>
-                    <span className="price-value">₹{product.rentalPricing.hourly}/hr</span>
-                  </div>
-                )}
-                {product.rentalPricing?.daily > 0 && (
-                  <div 
-                    className={`pricing-card ${selectedPricingType === 'daily' ? 'selected' : ''}`}
-                    onClick={() => setSelectedPricingType('daily')}
-                  >
-                    <span className="price-label">Daily</span>
-                    <span className="price-value">₹{product.rentalPricing.daily}/day</span>
-                  </div>
-                )}
-                {product.rentalPricing?.weekly > 0 && (
-                  <div 
-                    className={`pricing-card ${selectedPricingType === 'weekly' ? 'selected' : ''}`}
-                    onClick={() => setSelectedPricingType('weekly')}
-                  >
-                    <span className="price-label">Weekly</span>
-                    <span className="price-value">₹{product.rentalPricing.weekly}/week</span>
-                  </div>
-                )}
+            {/* Mode Selector - Show if product supports both */}
+            {product.availabilityType === 'both' && (
+              <div className="mode-selector">
+                <button 
+                  className={`mode-btn ${mode === 'rent' ? 'active' : ''}`}
+                  onClick={() => setMode('rent')}
+                >
+                  Rent
+                </button>
+                <button 
+                  className={`mode-btn ${mode === 'buy' ? 'active' : ''}`}
+                  onClick={() => setMode('buy')}
+                >
+                  Buy
+                </button>
               </div>
-            </div>
+            )}
 
-            {/* Rental Configuration */}
-            <div className="rental-config">
-              <h3>Configure Your Rental</h3>
-              
-              <div className="config-group">
-                <label>
-                  <FaCalendarAlt /> Start Date
-                </label>
-                <input 
-                  type="date" 
-                  value={startDate}
-                  min={getTodayDate()}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="date-input"
-                />
-              </div>
-
-              <div className="config-group">
-                <label>
-                  <FaCalendarAlt /> End Date
-                </label>
-                <input 
-                  type="date" 
-                  value={endDate}
-                  min={startDate || getTodayDate()}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="date-input"
-                />
-              </div>
-
-              <div className="config-group">
-                <label>Quantity</label>
-                <div className="quantity-selector">
-                  <button 
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="qty-btn"
-                  >
-                    -
-                  </button>
-                  <input 
-                    type="number" 
-                    value={quantity}
-                    min="1"
-                    max={product.quantityOnHand}
-                    onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="qty-input"
-                  />
-                  <button 
-                    onClick={() => setQuantity(Math.min(product.quantityOnHand, quantity + 1))}
-                    className="qty-btn"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-
-              {startDate && endDate && (
-                <div className="availability-check">
-                  {isAvailable ? (
-                    <div className="available">
-                      <FaCheckCircle /> Available for selected dates
+            {/* Pricing Section - Rental */}
+            {(mode === 'rent' && product.isRentable) && (
+              <div className="pricing-section">
+                <h3>Rental Pricing</h3>
+                <div className="pricing-options">
+                  {product.rentalPricing?.hourly > 0 && (
+                    <div 
+                      className={`pricing-card ${selectedPricingType === 'hourly' ? 'selected' : ''}`}
+                      onClick={() => setSelectedPricingType('hourly')}
+                    >
+                      <span className="price-label">Hourly</span>
+                      <span className="price-value">₹{product.rentalPricing.hourly}/hr</span>
                     </div>
-                  ) : (
-                    <div className="unavailable">
-                      <FaTimesCircle /> Not available for selected dates
+                  )}
+                  {product.rentalPricing?.daily > 0 && (
+                    <div 
+                      className={`pricing-card ${selectedPricingType === 'daily' ? 'selected' : ''}`}
+                      onClick={() => setSelectedPricingType('daily')}
+                    >
+                      <span className="price-label">Daily</span>
+                      <span className="price-value">₹{product.rentalPricing.daily}/day</span>
+                    </div>
+                  )}
+                  {product.rentalPricing?.weekly > 0 && (
+                    <div 
+                      className={`pricing-card ${selectedPricingType === 'weekly' ? 'selected' : ''}`}
+                      onClick={() => setSelectedPricingType('weekly')}
+                    >
+                      <span className="price-label">Weekly</span>
+                      <span className="price-value">₹{product.rentalPricing.weekly}/week</span>
                     </div>
                   )}
                 </div>
-              )}
+              </div>
+            )}
 
-              {totalPrice > 0 && (
-                <div className="price-summary">
-                  <div className="price-row">
-                    <span>Rental Price:</span>
-                    <span className="price">₹{totalPrice.toFixed(2)}</span>
-                  </div>
-                  <div className="price-row">
-                    <span>GST (18%):</span>
-                    <span className="price">₹{(totalPrice * 0.18).toFixed(2)}</span>
-                  </div>
-                  <div className="price-row total">
-                    <span>Total:</span>
-                    <span className="price">₹{(totalPrice * 1.18).toFixed(2)}</span>
+            {/* Pricing Section - Sale */}
+            {(mode === 'buy' && product.isSellable) && (
+              <div className="pricing-section">
+                <h3>Sale Price</h3>
+                <div className="sale-price-display">
+                  <span className="price-value">₹{product.salesPrice}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Rental Configuration */}
+            {mode === 'rent' && (
+              <div className="rental-config">
+                <h3>Configure Your Rental</h3>
+                
+                <div className="config-group">
+                  <label>
+                    <FaCalendarAlt /> Start Date
+                  </label>
+                  <input 
+                    type="date" 
+                    value={startDate}
+                    min={getTodayDate()}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="date-input"
+                  />
+                </div>
+
+                <div className="config-group">
+                  <label>
+                    <FaCalendarAlt /> End Date
+                  </label>
+                  <input 
+                    type="date" 
+                    value={endDate}
+                    min={startDate || getTodayDate()}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="date-input"
+                  />
+                </div>
+
+                <div className="config-group">
+                  <label>Quantity</label>
+                  <div className="quantity-selector">
+                    <button 
+                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                      className="qty-btn"
+                    >
+                      -
+                    </button>
+                    <input 
+                      type="number" 
+                      value={quantity}
+                      min="1"
+                      max={product.quantityOnHand}
+                      onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="qty-input"
+                    />
+                    <button 
+                      onClick={() => setQuantity(Math.min(product.quantityOnHand, quantity + 1))}
+                      className="qty-btn"
+                    >
+                      +
+                    </button>
                   </div>
                 </div>
-              )}
 
-              <button 
-                onClick={handleAddToCart}
-                disabled={!isAvailable || product.quantityOnHand === 0 || !startDate || !endDate}
-                className="btn btn-primary btn-large"
-              >
-                <FaShoppingCart /> Add to Cart
-              </button>
-            </div>
+                {startDate && endDate && (
+                  <div className="availability-check">
+                    {isAvailable ? (
+                      <div className="available">
+                        <FaCheckCircle /> Available for selected dates
+                      </div>
+                    ) : (
+                      <div className="unavailable">
+                        <FaTimesCircle /> Not available for selected dates
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {totalPrice > 0 && (
+                  <div className="price-summary">
+                    <div className="price-row">
+                      <span>Rental Price:</span>
+                      <span className="price">₹{totalPrice.toFixed(2)}</span>
+                    </div>
+                    <div className="price-row">
+                      <span>GST (18%):</span>
+                      <span className="price">₹{(totalPrice * 0.18).toFixed(2)}</span>
+                    </div>
+                    <div className="price-row total">
+                      <span>Total:</span>
+                      <span className="price">₹{(totalPrice * 1.18).toFixed(2)}</span>
+                    </div>
+                  </div>
+                )}
+
+                <button 
+                  onClick={handleAddToCart}
+                  disabled={!isAvailable || product.quantityOnHand === 0 || !startDate || !endDate}
+                  className="btn btn-primary btn-large"
+                >
+                  <FaShoppingCart /> Add to Cart
+                </button>
+              </div>
+            )}
+
+            {/* Buy Configuration */}
+            {mode === 'buy' && (
+              <div className="rental-config">
+                <h3>Purchase Details</h3>
+                
+                <div className="config-group">
+                  <label>Quantity</label>
+                  <div className="quantity-selector">
+                    <button 
+                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                      className="qty-btn"
+                    >
+                      -
+                    </button>
+                    <input 
+                      type="number" 
+                      value={quantity}
+                      min="1"
+                      max={product.quantityOnHand}
+                      onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="qty-input"
+                    />
+                    <button 
+                      onClick={() => setQuantity(Math.min(product.quantityOnHand, quantity + 1))}
+                      className="qty-btn"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                {totalPrice > 0 && (
+                  <div className="price-summary">
+                    <div className="price-row">
+                      <span>Item Price:</span>
+                      <span className="price">₹{totalPrice.toFixed(2)}</span>
+                    </div>
+                    <div className="price-row">
+                      <span>GST (18%):</span>
+                      <span className="price">₹{(totalPrice * 0.18).toFixed(2)}</span>
+                    </div>
+                    <div className="price-row total">
+                      <span>Total:</span>
+                      <span className="price">₹{(totalPrice * 1.18).toFixed(2)}</span>
+                    </div>
+                  </div>
+                )}
+
+                <button 
+                  onClick={handleAddToCart}
+                  disabled={product.quantityOnHand === 0}
+                  className="btn btn-primary btn-large"
+                >
+                  <FaShoppingCart /> Buy Now
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

@@ -59,6 +59,8 @@ const Navbar = () => {
                     <FaTachometerAlt /> Dashboard
                   </Link></li>
                   <li><Link to="/vendor/products" className="navbar-link">My Products</Link></li>
+                  <li><Link to="/vendor/quotations" className="navbar-link">Quotations</Link></li>
+                  <li><Link to="/orders" className="navbar-link">My Orders</Link></li>
                 </>
               )}
               
@@ -78,6 +80,7 @@ const Navbar = () => {
                 <ul className="dropdown-menu">
                   <li><Link to="/profile" className="dropdown-item">Profile</Link></li>
                   <li><Link to="/orders" className="dropdown-item">My Orders</Link></li>
+                  <li><Link to="/sale-orders" className="dropdown-item">Sale Orders</Link></li>
                   <li><Link to="/invoices" className="dropdown-item">Invoices</Link></li>
                   <li><hr className="dropdown-divider" /></li>
                   <li>

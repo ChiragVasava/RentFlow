@@ -102,8 +102,11 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    console.log('Login attempt for email:', email);
+
     // Validate input
     if (!email || !password) {
+      console.log('Missing email or password');
       return res.status(400).json({
         success: false,
         message: 'Please provide email and password'
@@ -114,14 +117,18 @@ exports.login = async (req, res) => {
     const user = await User.findOne({ email }).select('+password');
 
     if (!user) {
+      console.log('User not found for email:', email);
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
       });
     }
 
+    console.log('User found:', user.email, 'Role:', user.role, 'Active:', user.isActive);
+
     // Check if user is active
     if (!user.isActive) {
+      console.log('User account is inactive');
       return res.status(401).json({
         success: false,
         message: 'Your account has been deactivated. Please contact support.'
@@ -132,14 +139,19 @@ exports.login = async (req, res) => {
     const isMatch = await user.comparePassword(password);
 
     if (!isMatch) {
+      console.log('Password does not match');
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
       });
     }
 
+    console.log('Password matched, generating token...');
+
     // Generate token
     const token = generateToken(user._id);
+
+    console.log('Login successful for user:', user.email);
 
     res.status(200).json({
       success: true,

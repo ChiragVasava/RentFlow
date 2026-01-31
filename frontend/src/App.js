@@ -14,19 +14,26 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import CustomerDashboard from './pages/CustomerDashboard';
 import Products from './pages/Products';
 import ProductDetails from './pages/ProductDetails';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import Orders from './pages/Orders';
 import OrderDetails from './pages/OrderDetails';
+import MyOrders from './pages/MyOrders';
 import Quotations from './pages/Quotations';
 import QuotationDetails from './pages/QuotationDetails';
+import QuotationEdit from './pages/QuotationEdit';
+import SaleOrders from './pages/SaleOrders';
+import SaleOrderDetails from './pages/SaleOrderDetails';
 import Invoices from './pages/Invoices';
 import InvoiceDetails from './pages/InvoiceDetails';
 import Profile from './pages/Profile';
 import ManageProducts from './pages/vendor/ManageProducts';
 import VendorOrders from './pages/vendor/VendorOrders';
+import VendorDashboard from './pages/vendor/VendorDashboard';
+import VendorQuotations from './pages/VendorQuotations';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ManageUsers from './pages/admin/ManageUsers';
 import Settings from './pages/admin/Settings';
@@ -121,15 +128,33 @@ function AppRoutes() {
               </ProtectedRoute>
             } />
 
+            <Route path="/quotations/:id/edit" element={
+              <ProtectedRoute>
+                <QuotationEdit />
+              </ProtectedRoute>
+            } />
+
             <Route path="/orders" element={
               <ProtectedRoute>
-                <Orders />
+                <MyOrders />
               </ProtectedRoute>
             } />
 
             <Route path="/orders/:id" element={
               <ProtectedRoute>
                 <OrderDetails />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/sale-orders" element={
+              <ProtectedRoute>
+                <SaleOrders />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/sale-orders/:id" element={
+              <ProtectedRoute>
+                <SaleOrderDetails />
               </ProtectedRoute>
             } />
 
@@ -161,6 +186,12 @@ function AppRoutes() {
             <Route path="/vendor/products/edit/:id" element={
               <ProtectedRoute roles={['vendor', 'admin']}>
                 <ProductForm />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/vendor/quotations" element={
+              <ProtectedRoute roles={['vendor', 'admin']}>
+                <VendorQuotations />
               </ProtectedRoute>
             } />
 

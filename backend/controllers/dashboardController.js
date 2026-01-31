@@ -85,6 +85,21 @@ exports.getDashboardStats = async (req, res) => {
         : {};
       const totalProducts = await Product.countDocuments(productQuery);
 
+      // Vendor-specific product stats
+      if (req.user.role === 'vendor') {
+        const publishedProducts = await Product.countDocuments({
+          vendor: req.user.id,
+          isPublished: true
+        });
+        const pendingProducts = await Product.countDocuments({
+          vendor: req.user.id,
+          isPublished: false
+        });
+        
+        additionalStats.publishedProducts = publishedProducts;
+        additionalStats.pendingProducts = pendingProducts;
+      }
+
       // Most Rented Products
       const mostRentedProducts = await Order.aggregate([
         {
@@ -121,6 +136,7 @@ exports.getDashboardStats = async (req, res) => {
       ]);
 
       additionalStats = {
+        ...additionalStats,
         totalProducts,
         mostRentedProducts
       };

@@ -9,7 +9,7 @@ const {
   checkAvailability,
   getCategories
 } = require('../controllers/productController');
-const { protect, authorize } = require('../middleware/auth');
+const { protect, authorize, optionalAuth } = require('../middleware/auth');
 
 // Public routes
 router.get('/categories/list', getCategories);
@@ -40,8 +40,8 @@ router.get('/vendor/my-products', protect, authorize('vendor'), async (req, res)
   }
 });
 
-// General products route (must be after specific routes)
-router.get('/', getAllProducts);
+// General products route (must be after specific routes) - use optionalAuth to support both authenticated and public access
+router.get('/', optionalAuth, getAllProducts);
 
 router.post('/', protect, authorize('vendor', 'admin'), createProduct);
 router.put('/:id', protect, authorize('vendor', 'admin'), updateProduct);

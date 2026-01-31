@@ -25,6 +25,9 @@ const ProductForm = () => {
     category: '',
     vendor: user?.id || '',
     vendorName: user?.companyName || user?.name || '',
+    availabilityType: 'rent', // New field
+    isRentable: true,
+    isSellable: false,
     isPublished: false,
     images: [],
     rentalPricing: {
@@ -123,6 +126,16 @@ const ProductForm = () => {
         [name]: type === 'checkbox' ? checked : type === 'number' ? parseFloat(value) || 0 : value
       }));
     }
+  };
+
+  const handleAvailabilityTypeChange = (e) => {
+    const availabilityType = e.target.value;
+    setFormData(prev => ({
+      ...prev,
+      availabilityType,
+      isRentable: availabilityType === 'rent' || availabilityType === 'both',
+      isSellable: availabilityType === 'sale' || availabilityType === 'both'
+    }));
   };
 
   const handleImageUpload = (e) => {
@@ -324,6 +337,24 @@ const ProductForm = () => {
                 </div>
               </div>
 
+              {/* Availability Type */}
+              <div className="form-group">
+                <label>Availability Type <span className="required">*</span></label>
+                <select
+                  name="availabilityType"
+                  value={formData.availabilityType}
+                  onChange={handleAvailabilityTypeChange}
+                  className="select-field"
+                >
+                  <option value="rent">For Rent Only</option>
+                  <option value="sale">For Sale Only</option>
+                  <option value="both">For Both Sale & Rent</option>
+                </select>
+                <small className="field-hint">
+                  Choose whether this product is available for rent, sale, or both
+                </small>
+              </div>
+
               {/* Quantity on Hand */}
               <div className="form-group">
                 <label htmlFor="quantityOnHand">Quantity on Hand</label>
@@ -338,33 +369,36 @@ const ProductForm = () => {
                 />
               </div>
 
-              {/* Sales Price */}
-              <div className="form-group">
-                <label htmlFor="salesPrice">Sales Price</label>
-                <div className="input-group">
-                  <span className="input-prefix">₹</span>
-                  <input
-                    type="number"
-                    id="salesPrice"
-                    name="salesPrice"
-                    value={formData.salesPrice}
-                    onChange={handleChange}
-                    min="0"
-                    step="0.01"
-                    placeholder="0.00"
-                  />
-                  <select
-                    name="salesPriceUnit"
-                    value={formData.salesPriceUnit}
-                    onChange={handleChange}
-                    className="input-suffix-select"
-                  >
-                    {priceUnits.map(unit => (
-                      <option key={unit} value={unit}>{unit}</option>
-                    ))}
-                  </select>
+              {/* Sales Price - Only show if product is for sale */}
+              {(formData.availabilityType === 'sale' || formData.availabilityType === 'both') && (
+                <div className="form-group">
+                  <label htmlFor="salesPrice">Sales Price <span className="required">*</span></label>
+                  <div className="input-group">
+                    <span className="input-prefix">₹</span>
+                    <input
+                      type="number"
+                      id="salesPrice"
+                      name="salesPrice"
+                      value={formData.salesPrice}
+                      onChange={handleChange}
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      required
+                    />
+                    <select
+                      name="salesPriceUnit"
+                      value={formData.salesPriceUnit}
+                      onChange={handleChange}
+                      className="input-suffix-select"
+                    >
+                      {priceUnits.map(unit => (
+                        <option key={unit} value={unit}>{unit}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Cost Price */}
               <div className="form-group">
@@ -394,10 +428,11 @@ const ProductForm = () => {
                 </div>
               </div>
 
-              {/* Rental Pricing */}
-              <div className="form-group">
-                <label>Rental Pricing (Optional)</label>
-                <div className="rental-pricing-grid">
+              {/* Rental Pricing - Only show if product is for rent */}
+              {(formData.availabilityType === 'rent' || formData.availabilityType === 'both') && (
+                <div className="form-group">
+                  <label>Rental Pricing (Optional)</label>
+                  <div className="rental-pricing-grid">
                   <div className="price-input-small">
                     <label>Hourly</label>
                     <div className="input-group-small">
@@ -445,6 +480,7 @@ const ProductForm = () => {
                   </div>
                 </div>
               </div>
+              )}
 
               {/* Category */}
               <div className="form-group">
