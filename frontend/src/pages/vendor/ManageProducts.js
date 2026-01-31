@@ -46,8 +46,8 @@ const ManageProducts = () => {
     { id: 1, name: '', values: '' }
   ]);
 
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState('');
+  const [images, setImages] = useState([]);
+  const [imageUrls, setImageUrls] = useState(['']);
 
   const categories = [
     'Electronics',
@@ -104,21 +104,19 @@ const ManageProducts = () => {
     }
   };
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('Image size should be less than 5MB');
-        return;
-      }
+  const handleImageUrlChange = (index, value) => {
+    const newUrls = [...imageUrls];
+    newUrls[index] = value;
+    setImageUrls(newUrls);
+  };
 
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
+  const handleAddImageUrl = () => {
+    setImageUrls([...imageUrls, '']);
+  };
+
+  const handleRemoveImageUrl = (index) => {
+    const newUrls = imageUrls.filter((_, i) => i !== index);
+    setImageUrls(newUrls.length > 0 ? newUrls : ['']);
   };
 
   const handleAddAttribute = () => {
@@ -160,15 +158,18 @@ const ManageProducts = () => {
           }))
       };
 
-      // Handle image upload if there's a new image
-      if (imageFile) {
-        const formDataWithImage = new FormData();
-        formDataWithImage.append('image', imageFile);
-        
-        // For now, we'll use a placeholder URL since we don't have image upload configured
-        // In production, you'd upload to a cloud storage service
+      // Handle image URLs (filter out empty URLs)
+      const validImageUrls = imageUrls.filter(url => url.trim() !== '');
+      if (validImageUrls.length > 0) {
+        productData.images = validImageUrls.map((url, index) => ({
+          url: url,
+          isPrimary: index === 0,
+          caption: ''
+        }));
+      } else {
+        // Use a placeholder image if no images provided
         productData.images = [{
-          url: imagePreview,
+          url: 'https://via.placeholder.com/400x400?text=No+Image',
           isPrimary: true
         }];
       }
@@ -218,8 +219,8 @@ const ManageProducts = () => {
       images: []
     });
     setAttributes([{ id: 1, name: '', values: '' }]);
-    setImageFile(null);
-    setImagePreview('');
+    setImages([]);
+    setImageUrls(['']);
     setEditingProduct(null);
     setActiveTab('general');
   };
@@ -254,8 +255,9 @@ const ManageProducts = () => {
     }
 
     if (product.images && product.images.length > 0) {
-      const primaryImage = product.images.find(img => img.isPrimary);
-      setImagePreview(primaryImage?.url || product.images[0].url);
+      setImageUrls(product.images.map(img => img.url || ''));
+    } else {
+      setImageUrls(['']);
     }
 
     setShowNewProductForm(true);
@@ -574,37 +576,55 @@ const ManageProducts = () => {
 
                   <div className="form-sidebar">
                     <div className="sidebar-section card">
-                      <h3>Product Image</h3>
-                      <div className="image-upload-area">
-                        {imagePreview ? (
-                          <div className="image-preview">
-                            <img src={imagePreview} alt="Preview" />
-                            <button
-                              type="button"
-                              className="btn-remove-image"
-                              onClick={() => {
-                                setImagePreview('');
-                                setImageFile(null);
-                              }}
-                            >
-                              <FaTrash />
-                            </button>
+                      <h3>Product Images</h3>
+                      <div className="image-urls-section">
+                        {imageUrls.map((url, index) => (
+                          <div key={index} className="image-url-row">
+                            <div className="image-url-input-group">
+                              <input
+                                type="url"
+                                value={url}
+                                onChange={(e) => handleImageUrlChange(index, e.target.value)}
+                                placeholder={`Image URL ${index + 1} ${index === 0 ? '(Primary)' : ''}`}
+                                className="image-url-input"
+                              />
+                              {imageUrls.length > 1 && (
+                                <button
+                                  type="button"
+                                  className="btn-remove-url"
+                                  onClick={() => handleRemoveImageUrl(index)}
+                                  title="Remove image"
+                                >
+                                  <FaTrash />
+                                </button>
+                              )}
+                            </div>
+                            {url && (
+                              <div className="image-url-preview">
+                                <img 
+                                  src={url} 
+                                  alt={`Preview ${index + 1}`}
+                                  onError={(e) => {
+                                    e.target.src = 'https://via.placeholder.com/100x100?text=Invalid+URL';
+                                  }}
+                                />
+                                {index === 0 && (
+                                  <span className="primary-badge">Primary</span>
+                                )}
+                              </div>
+                            )}
                           </div>
-                        ) : (
-                          <div className="upload-placeholder">
-                            <FaImage />
-                            <p>No image selected</p>
-                          </div>
-                        )}
-                        <label className="btn btn-outline btn-block">
-                          <FaUpload /> Upload Image
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageChange}
-                            style={{ display: 'none' }}
-                          />
-                        </label>
+                        ))}
+                        <button
+                          type="button"
+                          className="btn btn-outline btn-block btn-sm"
+                          onClick={handleAddImageUrl}
+                        >
+                          <FaPlus /> Add Image URL
+                        </button>
+                        <small className="form-hint">
+                          <FaInfoCircle /> Enter image URLs (first image will be primary). Use services like Imgur, Cloudinary, or direct image links.
+                        </small>
                       </div>
                     </div>
 
