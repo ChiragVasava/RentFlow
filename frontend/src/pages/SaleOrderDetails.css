@@ -10,6 +10,11 @@
 /* Header */
 .details-header {
   margin-bottom: 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .back-btn {
@@ -31,6 +36,34 @@
 .back-btn:hover {
   background: #4b5563;
   transform: translateY(-1px);
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-btn.btn-primary {
+  background: #3b82f6;
+  color: white;
+}
+
+.action-btn.btn-primary:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
+}
+
+.action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* Cards */

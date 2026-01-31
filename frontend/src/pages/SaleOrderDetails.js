@@ -15,9 +15,10 @@ import {
   FaEdit,
   FaCheck,
   FaTimes,
-  FaMoneyBillWave
+  FaMoneyBillWave,
+  FaReceipt
 } from 'react-icons/fa';
-import { saleOrdersAPI } from '../utils/api';
+import { saleOrdersAPI, invoicesAPI } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import './SaleOrderDetails.css';
 
@@ -122,6 +123,31 @@ const SaleOrderDetails = () => {
     }
   };
 
+  const handleCreateInvoice = async () => {
+    if (!window.confirm('Create invoice for this sale order?')) return;
+
+    try {
+      setActionLoading(true);
+      const response = await invoicesAPI.create({
+        orderId: id,
+        paymentType: 'full',
+        initialPayment: 0,
+        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        notes: 'Invoice generated from sale order'
+      });
+      
+      if (response.data.success) {
+        toast.success('Invoice created successfully');
+        navigate(`/invoices/${response.data.invoice._id}`);
+      }
+    } catch (error) {
+      console.error('Error creating invoice:', error);
+      toast.error(error.response?.data?.message || 'Failed to create invoice');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const getStatusBadge = (status) => {
     const statusConfig = {
       draft: { icon: <FaEdit />, class: 'draft', label: 'Draft' },
@@ -185,6 +211,15 @@ const SaleOrderDetails = () => {
         <button onClick={() => navigate('/sale-orders')} className="back-btn">
           <FaArrowLeft /> Back to Sale Orders
         </button>
+        {user?.role === 'vendor' && saleOrder.status !== 'cancelled' && (
+          <button 
+            onClick={handleCreateInvoice} 
+            className="action-btn btn-primary"
+            disabled={actionLoading}
+          >
+            <FaReceipt /> Create Invoice
+          </button>
+        )}
       </div>
 
       {/* Sale Order Info Card */}

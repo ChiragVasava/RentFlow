@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ordersAPI } from '../utils/api';
+import { ordersAPI, invoicesAPI } from '../utils/api';
 import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
 import { 
   FaArrowLeft, FaFileInvoice, FaCalendarAlt, FaMapMarkerAlt, FaCreditCard, 
   FaCheckCircle, FaBox, FaDownload, FaTruck, FaEdit, FaTimes,
-  FaClock, FaUser, FaBuilding, FaInfoCircle
+  FaClock, FaUser, FaBuilding, FaInfoCircle, FaReceipt
 } from 'react-icons/fa';
 import './QuotationDetails.css'; // Reuse same styles
 
@@ -86,6 +86,31 @@ const OrderDetails = () => {
     }
   };
 
+  const handleCreateInvoice = async () => {
+    if (!window.confirm('Create invoice for this order?')) return;
+
+    try {
+      setActionLoading(true);
+      const response = await invoicesAPI.create({
+        orderId: id,
+        paymentType: 'full',
+        initialPayment: 0,
+        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        notes: 'Invoice generated from order'
+      });
+      
+      if (response.data.success) {
+        toast.success('Invoice created successfully');
+        navigate(`/invoices/${response.data.invoice._id}`);
+      }
+    } catch (error) {
+      console.error('Error creating invoice:', error);
+      toast.error(error.response?.data?.message || 'Failed to create invoice');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const getStatusBadge = (status) => {
     const statusConfig = {
       draft: { icon: <FaEdit />, class: 'draft', label: 'Draft' },
@@ -159,6 +184,11 @@ const OrderDetails = () => {
           <button className="btn btn-outline" onClick={() => toast.info('Download feature coming soon')}>
             <FaDownload /> Download PDF
           </button>
+          {user?.role === 'vendor' && order.status !== 'cancelled' && (
+            <button className="btn btn-primary" onClick={handleCreateInvoice} disabled={actionLoading}>
+              <FaReceipt /> Create Invoice
+            </button>
+          )}
         </div>
       </div>
 

@@ -36,9 +36,30 @@ const invoiceSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  discount: {
+    type: Number,
+    default: 0
+  },
+  discountType: {
+    type: String,
+    enum: ['percentage', 'fixed'],
+    default: 'fixed'
+  },
   taxRate: {
     type: Number,
     default: 18
+  },
+  cgst: {
+    type: Number,
+    default: 0
+  },
+  sgst: {
+    type: Number,
+    default: 0
+  },
+  igst: {
+    type: Number,
+    default: 0
   },
   taxAmount: {
     type: Number,
@@ -64,15 +85,27 @@ const invoiceSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  paymentType: {
+    type: String,
+    enum: ['full', 'partial', 'deposit', 'advance'],
+    default: 'full'
+  },
   status: {
     type: String,
-    enum: ['draft', 'sent', 'partial', 'paid', 'cancelled'],
+    enum: ['draft', 'sent', 'partial', 'paid', 'overdue', 'cancelled'],
     default: 'draft'
   },
   paymentMethod: {
     type: String,
-    enum: ['cash', 'card', 'upi', 'online', 'bank_transfer'],
+    enum: ['cash', 'card', 'upi', 'online', 'bank_transfer', 'cheque'],
     default: 'online'
+  },
+  bankDetails: {
+    accountName: String,
+    accountNumber: String,
+    bankName: String,
+    ifscCode: String,
+    branch: String
   },
   payments: [{
     amount: Number,

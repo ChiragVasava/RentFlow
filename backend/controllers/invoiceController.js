@@ -130,20 +130,47 @@ exports.createInvoice = async (req, res) => {
       rentalPeriod: `${new Date(item.rentalStartDate).toLocaleDateString()} - ${new Date(item.rentalEndDate).toLocaleDateString()}`
     }));
 
+    // Calculate taxes (CGST + SGST for same state, IGST for different state)
+    const { discount = 0, discountType = 'fixed', paymentType = 'full', initialPayment = 0 } = req.body;
+    
+    let subtotal = order.subtotal;
+    let discountAmount = 0;
+    
+    if (discount > 0) {
+      discountAmount = discountType === 'percentage' 
+        ? (subtotal * discount) / 100 
+        : discount;
+      subtotal -= discountAmount;
+    }
+
+    const taxRate = order.taxRate || 18;
+    const taxAmount = (subtotal * taxRate) / 100;
+    const cgst = taxAmount / 2;
+    const sgst = taxAmount / 2;
+    const totalAmount = subtotal + taxAmount;
+
     const invoice = await Invoice.create({
       order: orderId,
       customer: order.customer,
       vendor: order.vendor,
       items: invoiceItems,
       subtotal: order.subtotal,
-      taxAmount: order.taxAmount,
-      totalAmount: order.totalAmount,
+      discount: discountAmount,
+      discountType,
+      taxRate,
+      cgst,
+      sgst,
+      igst: 0,
+      taxAmount,
+      totalAmount,
       securityDeposit: order.securityDeposit || 0,
       lateReturnFee: order.lateReturnFee || 0,
-      balanceAmount: order.totalAmount,
+      paidAmount: initialPayment || 0,
+      balanceAmount: totalAmount - (initialPayment || 0),
+      paymentType,
       dueDate: dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       notes,
-      status: 'draft'
+      status: initialPayment >= totalAmount ? 'paid' : initialPayment > 0 ? 'partial' : 'draft'
     });
 
     await invoice.populate('customer', 'name email companyName gstin');
