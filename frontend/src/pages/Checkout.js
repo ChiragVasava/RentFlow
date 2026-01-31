@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { quotationsAPI } from '../utils/api';
+import { quotationsAPI, productsAPI } from '../utils/api';
 import { toast } from 'react-toastify';
 import { FaShoppingCart, FaMapMarkerAlt, FaCreditCard, FaCheckCircle } from 'react-icons/fa';
 import './Checkout.css';
@@ -40,16 +40,26 @@ const Checkout = () => {
   const [acceptTerms, setAcceptTerms] = useState(false);
 
   useEffect(() => {
+    console.log('Checkout loaded. Cart items:', cartItems);
+    
     if (cartItems.length === 0) {
       navigate('/cart');
       return;
     }
 
     // Validate all cart items have valid product data
-    const hasInvalidItems = cartItems.some(item => !item.product || !item.product._id);
+    const hasInvalidItems = cartItems.some(item => {
+      const productId = item.product?._id || item.product;
+      const isInvalid = !productId;
+      if (isInvalid) {
+        console.error('Invalid cart item detected:', item);
+      }
+      return isInvalid;
+    });
+    
     if (hasInvalidItems) {
       toast.error('Some items in your cart have invalid data. Please remove and re-add them.');
-      navigate('/cart');
+      setTimeout(() => navigate('/cart'), 2000);
     }
   }, [cartItems, navigate]);
 
@@ -119,30 +129,54 @@ const Checkout = () => {
     setLoading(true);
 
     try {
-      // Validate cart items have product data
-      const invalidItems = cartItems.filter(item => !item.product || !item.product._id);
-      if (invalidItems.length > 0) {
-        toast.error('Some items in your cart are invalid. Please refresh and try again.');
-        setLoading(false);
-        return;
-      }
+      console.log('Cart items before order:', cartItems);
 
-      // Create quotation from cart items
-      const quotationItems = cartItems.map(item => ({
-        product: item.product._id,
-        quantity: item.quantity,
-        rentalStartDate: item.startDate,
-        rentalEndDate: item.endDate,
-        pricePerUnit: item.price / item.quantity,
-        totalPrice: item.price
-      }));
+      // Validate and prepare cart items
+      const validatedItems = [];
+      
+      for (const item of cartItems) {
+        // Check if product exists and has an ID
+        if (!item.product) {
+          toast.error('Invalid cart item found. Please refresh your cart.');
+          setLoading(false);
+          return;
+        }
+
+        let productId = item.product._id || item.product;
+        
+        // If productId is still not valid, try to extract it
+        if (!productId || typeof productId !== 'string') {
+          console.error('Invalid product in cart:', item);
+          toast.error('Some cart items have invalid product data. Please remove and re-add them.');
+          setLoading(false);
+          return;
+        }
+
+        // Verify the product exists by fetching it
+        try {
+          await productsAPI.getOne(productId);
+          validatedItems.push({
+            product: productId,
+            quantity: item.quantity,
+            rentalStartDate: item.startDate,
+            rentalEndDate: item.endDate,
+            pricePerUnit: item.price / item.quantity,
+            totalPrice: item.price
+          });
+        } catch (error) {
+          console.error('Product not found:', productId, error);
+          toast.error(`Product not found. Please remove it from cart and try again.`);
+          setLoading(false);
+          return;
+        }
+      }
 
       const subtotal = calculateTotal();
       const taxAmount = subtotal * 0.18;
       const totalAmount = subtotal + taxAmount;
 
       const quotationData = {
-        items: quotationItems,
+        items: validatedItems,
         subtotal,
         taxRate: 18,
         taxAmount,
@@ -151,6 +185,8 @@ const Checkout = () => {
         paymentMethod,
         notes: `Payment Method: ${paymentMethod.toUpperCase()}`
       };
+
+      console.log('Creating quotation with data:', quotationData);
 
       const response = await quotationsAPI.create(quotationData);
 
@@ -165,6 +201,7 @@ const Checkout = () => {
       toast.success('Order placed successfully! Redirecting to your orders...');
     } catch (error) {
       console.error('Error creating quotation:', error);
+      console.error('Error response:', error.response?.data);
       toast.error(error.response?.data?.message || 'Failed to place order. Please try again.');
     } finally {
       setLoading(false);
