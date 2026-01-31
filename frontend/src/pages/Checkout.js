@@ -155,13 +155,13 @@ const Checkout = () => {
         // Verify the product exists by fetching it
         try {
           await productsAPI.getOne(productId);
+          
+          // Backend expects rentalStartDate and rentalEndDate (not startDate/endDate)
           validatedItems.push({
             product: productId,
             quantity: item.quantity,
             rentalStartDate: item.startDate,
-            rentalEndDate: item.endDate,
-            pricePerUnit: item.price / item.quantity,
-            totalPrice: item.price
+            rentalEndDate: item.endDate
           });
         } catch (error) {
           console.error('Product not found:', productId, error);
@@ -171,19 +171,10 @@ const Checkout = () => {
         }
       }
 
-      const subtotal = calculateTotal();
-      const taxAmount = subtotal * 0.18;
-      const totalAmount = subtotal + taxAmount;
-
+      // Backend will calculate subtotal, tax, and total automatically
       const quotationData = {
         items: validatedItems,
-        subtotal,
-        taxRate: 18,
-        taxAmount,
-        totalAmount,
-        shippingAddress,
-        paymentMethod,
-        notes: `Payment Method: ${paymentMethod.toUpperCase()}`
+        notes: `Shipping Address: ${shippingAddress.addressLine1}, ${shippingAddress.city}, ${shippingAddress.state} - ${shippingAddress.pincode}. Payment Method: ${paymentMethod.toUpperCase()}`
       };
 
       console.log('Creating quotation with data:', quotationData);
