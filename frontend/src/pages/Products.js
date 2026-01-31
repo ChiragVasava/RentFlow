@@ -6,24 +6,26 @@ import './Products.css';
 
 const Products = () => {
   const [products, setProducts] = useState([]);
+  const [allProducts, setAllProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     search: '',
     category: '',
     isPublished: true
   });
-  const [categories, setCategories] = useState([]);
+  const [categories] = useState([
+    'Electronics',
+    'Furniture',
+    'Entertainment',
+    'Transportation',
+    'Tools & Equipment',
+    'Party Supplies'
+  ]);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchProducts();
   }, [filters]);
-
-  useEffect(() => {
-    // Extract unique categories from products
-    const uniqueCategories = [...new Set(products.map(p => p.category))].filter(Boolean);
-    setCategories(uniqueCategories);
-  }, [products]);
 
   const fetchProducts = async () => {
     try {
@@ -40,9 +42,9 @@ const Products = () => {
     const stars = [];
     for (let i = 0; i < 5; i++) {
       stars.push(
-        <FaStar 
-          key={i} 
-          className={i < Math.floor(rating) ? 'star filled' : 'star'} 
+        <FaStar
+          key={i}
+          className={i < Math.floor(rating) ? 'star filled' : 'star'}
         />
       );
     }
@@ -85,17 +87,17 @@ const Products = () => {
             onChange={(e) => setFilters({ ...filters, search: e.target.value })}
           />
         </div>
-        
+
         {categories.length > 0 && (
           <div className="category-filters">
-            <button 
+            <button
               className={`category-btn ${filters.category === '' ? 'active' : ''}`}
               onClick={() => setFilters({ ...filters, category: '' })}
             >
               All Categories
             </button>
             {categories.map((category) => (
-              <button 
+              <button
                 key={category}
                 className={`category-btn ${filters.category === category ? 'active' : ''}`}
                 onClick={() => setFilters({ ...filters, category })}
@@ -120,8 +122,8 @@ const Products = () => {
           </div>
         ) : (
           products.map((product) => (
-            <div 
-              key={product._id} 
+            <div
+              key={product._id}
               className="product-card"
               onClick={() => navigate(`/products/${product._id}`)}
             >
@@ -139,7 +141,7 @@ const Products = () => {
                 <p className="product-description">
                   {product.description?.substring(0, 80)}...
                 </p>
-                
+
                 {product.ratings && product.ratings.count > 0 && (
                   <div className="product-rating">
                     <div className="stars">
@@ -162,7 +164,7 @@ const Products = () => {
                 </div>
 
                 <div className="product-actions">
-                  <button 
+                  <button
                     className="btn btn-primary"
                     onClick={(e) => {
                       e.stopPropagation();
