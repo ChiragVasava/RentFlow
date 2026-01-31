@@ -194,10 +194,6 @@ exports.createInvoice = async (req, res) => {
       notes,
       status: initialPayment >= totalAmount ? 'paid' : initialPayment > 0 ? 'partial' : 'draft'
     });
-      dueDate: dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      notes,
-      status: initialPayment >= totalAmount ? 'paid' : initialPayment > 0 ? 'partial' : 'draft'
-    });
 
     await invoice.populate('customer', 'name email companyName gstin');
     await invoice.populate('vendor', 'name companyName gstin');
