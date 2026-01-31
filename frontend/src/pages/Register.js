@@ -34,8 +34,13 @@ const Register = () => {
       return;
     }
 
-    if (!formData.gstin) {
-      toast.error('GSTIN is mandatory for registration');
+    if (formData.role === 'vendor' && !formData.gstin) {
+      toast.error('GSTIN is mandatory for vendors');
+      return;
+    }
+
+    if (formData.role === 'vendor' && !formData.companyName) {
+      toast.error('Company Name is mandatory for vendors');
       return;
     }
 
@@ -118,32 +123,35 @@ const Register = () => {
               </div>
             </div>
 
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Company Name</label>
-                <input
-                  type="text"
-                  name="companyName"
-                  className="form-control"
-                  placeholder="Enter company name"
-                  value={formData.companyName}
-                  onChange={handleChange}
-                />
-              </div>
+            {formData.role === 'vendor' && (
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Company Name *</label>
+                  <input
+                    type="text"
+                    name="companyName"
+                    className="form-control"
+                    placeholder="Enter company name"
+                    value={formData.companyName}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
 
-              <div className="form-group">
-                <label className="form-label">GSTIN *</label>
-                <input
-                  type="text"
-                  name="gstin"
-                  className="form-control"
-                  placeholder="Enter GSTIN (mandatory)"
-                  value={formData.gstin}
-                  onChange={handleChange}
-                  required
-                />
+                <div className="form-group">
+                  <label className="form-label">GSTIN *</label>
+                  <input
+                    type="text"
+                    name="gstin"
+                    className="form-control"
+                    placeholder="Enter GSTIN (mandatory)"
+                    value={formData.gstin}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="form-row">
               <div className="form-group">

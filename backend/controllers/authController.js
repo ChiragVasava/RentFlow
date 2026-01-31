@@ -42,11 +42,19 @@ exports.register = async (req, res) => {
       });
     }
 
-    // For customers and vendors, GSTIN is mandatory
-    if ((role === 'customer' || role === 'vendor') && !gstin) {
+    // For vendors, GSTIN is mandatory
+    if (role === 'vendor' && !gstin) {
       return res.status(400).json({
         success: false,
-        message: 'GSTIN is mandatory for registration'
+        message: 'GSTIN is mandatory for vendors'
+      });
+    }
+
+    // For vendors, company name is mandatory
+    if (role === 'vendor' && !companyName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Company name is mandatory for vendors'
       });
     }
 
