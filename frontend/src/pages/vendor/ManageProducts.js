@@ -3,14 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { 
   FaPlus, FaEdit, FaTrash, FaEye, FaEyeSlash, FaBox, FaSave, FaTimes, 
-  FaUpload, FaImage, FaCog, FaInfoCircle 
+  FaCog, FaInfoCircle 
 } from 'react-icons/fa';
 import { productsAPI } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 import './ManageProducts.css';
 
 const ManageProducts = () => {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -46,7 +45,6 @@ const ManageProducts = () => {
     { id: 1, name: '', values: '' }
   ]);
 
-  const [images, setImages] = useState([]);
   const [imageUrls, setImageUrls] = useState(['']);
 
   const categories = [
@@ -65,17 +63,16 @@ const ManageProducts = () => {
 
   useEffect(() => {
     fetchProducts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchProducts = async () => {
     try {
       setLoading(true);
       const response = await productsAPI.getAll();
-      // Filter to show only vendor's products
-      const vendorProducts = response.data.products.filter(
-        product => product.vendor?._id === user.id || product.vendor === user.id
-      );
-      setProducts(vendorProducts);
+      console.log('Fetched products response:', response.data);
+      // Backend already filters vendor products when vendor is logged in
+      setProducts(response.data.products || []);
     } catch (error) {
       console.error('Error fetching products:', error);
       toast.error('Failed to load products');
@@ -174,19 +171,19 @@ const ManageProducts = () => {
         }];
       }
 
-      let response;
       if (editingProduct) {
-        response = await productsAPI.update(editingProduct._id, productData);
+        await productsAPI.update(editingProduct._id, productData);
         toast.success('Product updated successfully');
       } else {
-        response = await productsAPI.create(productData);
+        const response = await productsAPI.create(productData);
+        console.log('Product created:', response.data);
         toast.success('Product created successfully');
       }
 
       // Reset form and refresh list
-      resetForm();
-      fetchProducts();
       setShowNewProductForm(false);
+      resetForm();
+      await fetchProducts();
     } catch (error) {
       console.error('Error saving product:', error);
       toast.error(error.response?.data?.message || 'Failed to save product');
@@ -219,7 +216,6 @@ const ManageProducts = () => {
       images: []
     });
     setAttributes([{ id: 1, name: '', values: '' }]);
-    setImages([]);
     setImageUrls(['']);
     setEditingProduct(null);
     setActiveTab('general');
