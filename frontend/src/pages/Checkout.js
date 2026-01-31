@@ -42,6 +42,14 @@ const Checkout = () => {
   useEffect(() => {
     if (cartItems.length === 0) {
       navigate('/cart');
+      return;
+    }
+
+    // Validate all cart items have valid product data
+    const hasInvalidItems = cartItems.some(item => !item.product || !item.product._id);
+    if (hasInvalidItems) {
+      toast.error('Some items in your cart have invalid data. Please remove and re-add them.');
+      navigate('/cart');
     }
   }, [cartItems, navigate]);
 
@@ -111,6 +119,14 @@ const Checkout = () => {
     setLoading(true);
 
     try {
+      // Validate cart items have product data
+      const invalidItems = cartItems.filter(item => !item.product || !item.product._id);
+      if (invalidItems.length > 0) {
+        toast.error('Some items in your cart are invalid. Please refresh and try again.');
+        setLoading(false);
+        return;
+      }
+
       // Create quotation from cart items
       const quotationItems = cartItems.map(item => ({
         product: item.product._id,
@@ -133,22 +149,23 @@ const Checkout = () => {
         totalAmount,
         shippingAddress,
         paymentMethod,
-        notes: `Payment Method: ${paymentMethod}`
+        notes: `Payment Method: ${paymentMethod.toUpperCase()}`
       };
 
-      await quotationsAPI.create(quotationData);
+      const response = await quotationsAPI.create(quotationData);
 
       setStep(3);
       
       // Clear cart after successful quotation
       setTimeout(() => {
         clearCart();
-      }, 3000);
+        navigate('/orders');
+      }, 2000);
 
-      toast.success('Quotation created successfully! We will contact you shortly.');
+      toast.success('Order placed successfully! Redirecting to your orders...');
     } catch (error) {
       console.error('Error creating quotation:', error);
-      toast.error(error.response?.data?.message || 'Failed to create quotation. Please try again.');
+      toast.error(error.response?.data?.message || 'Failed to place order. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -172,11 +189,11 @@ const Checkout = () => {
           <div className="success-icon">
             <FaCheckCircle />
           </div>
-          <h1>Quotation Created Successfully!</h1>
-          <p>Thank you for your request. We'll review your quotation and contact you shortly with confirmation.</p>
+          <h1>Order Placed Successfully!</h1>
+          <p>Thank you for your order. We've received your rental request and will process it shortly.</p>
           <div className="success-actions">
-            <button className="btn btn-primary" onClick={() => navigate('/quotations')}>
-              View My Quotations
+            <button className="btn btn-primary" onClick={() => navigate('/orders')}>
+              View My Orders
             </button>
             <button className="btn btn-outline" onClick={() => navigate('/products')}>
               Continue Shopping
