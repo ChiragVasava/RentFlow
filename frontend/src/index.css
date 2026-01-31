@@ -132,7 +132,7 @@ code {
 }
 
 .btn-danger {
-  background-color: var(--danger);
+  background-color: var(--white);
   color: var(--white);
 }
 

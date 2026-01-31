@@ -21,6 +21,7 @@ import Checkout from './pages/Checkout';
 import Orders from './pages/Orders';
 import OrderDetails from './pages/OrderDetails';
 import Quotations from './pages/Quotations';
+import QuotationDetails from './pages/QuotationDetails';
 import Invoices from './pages/Invoices';
 import InvoiceDetails from './pages/InvoiceDetails';
 import Profile from './pages/Profile';
@@ -111,6 +112,12 @@ function AppRoutes() {
             <Route path="/quotations" element={
               <ProtectedRoute>
                 <Quotations />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/quotations/:id" element={
+              <ProtectedRoute>
+                <QuotationDetails />
               </ProtectedRoute>
             } />
 

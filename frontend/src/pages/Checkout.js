@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { quotationsAPI } from '../utils/api';
 import { toast } from 'react-toastify';
 import { FaShoppingCart, FaMapMarkerAlt, FaCreditCard, FaCheckCircle } from 'react-icons/fa';
 import './Checkout.css';
@@ -110,29 +111,44 @@ const Checkout = () => {
     setLoading(true);
 
     try {
-      // Simulate order creation
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Create quotation from cart items
+      const quotationItems = cartItems.map(item => ({
+        product: item.product._id,
+        quantity: item.quantity,
+        rentalStartDate: item.startDate,
+        rentalEndDate: item.endDate,
+        pricePerUnit: item.price / item.quantity,
+        totalPrice: item.price
+      }));
 
-      // In a real app, you would call the API here
-      // const orderData = {
-      //   items: cartItems,
-      //   shippingAddress,
-      //   paymentMethod,
-      //   totalAmount: calculateTotal() * 1.18
-      // };
-      // await ordersAPI.create(orderData);
+      const subtotal = calculateTotal();
+      const taxAmount = subtotal * 0.18;
+      const totalAmount = subtotal + taxAmount;
+
+      const quotationData = {
+        items: quotationItems,
+        subtotal,
+        taxRate: 18,
+        taxAmount,
+        totalAmount,
+        shippingAddress,
+        paymentMethod,
+        notes: `Payment Method: ${paymentMethod}`
+      };
+
+      await quotationsAPI.create(quotationData);
 
       setStep(3);
       
-      // Clear cart after successful order
+      // Clear cart after successful quotation
       setTimeout(() => {
         clearCart();
       }, 3000);
 
-      toast.success('Order placed successfully!');
+      toast.success('Quotation created successfully! We will contact you shortly.');
     } catch (error) {
-      console.error('Error placing order:', error);
-      toast.error('Failed to place order. Please try again.');
+      console.error('Error creating quotation:', error);
+      toast.error(error.response?.data?.message || 'Failed to create quotation. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -156,11 +172,11 @@ const Checkout = () => {
           <div className="success-icon">
             <FaCheckCircle />
           </div>
-          <h1>Order Placed Successfully!</h1>
-          <p>Thank you for your order. We'll send you a confirmation email shortly.</p>
+          <h1>Quotation Created Successfully!</h1>
+          <p>Thank you for your request. We'll review your quotation and contact you shortly with confirmation.</p>
           <div className="success-actions">
-            <button className="btn btn-primary" onClick={() => navigate('/orders')}>
-              View My Orders
+            <button className="btn btn-primary" onClick={() => navigate('/quotations')}>
+              View My Quotations
             </button>
             <button className="btn btn-outline" onClick={() => navigate('/products')}>
               Continue Shopping
