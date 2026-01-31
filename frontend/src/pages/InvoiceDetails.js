@@ -195,7 +195,17 @@ const InvoiceDetails = () => {
             <h1>{invoice.vendor?.companyName || invoice.vendor?.name}</h1>
             <p>{invoice.vendor?.email}</p>
             <p>{invoice.vendor?.phone}</p>
-            {invoice.vendor?.address && <p>{invoice.vendor.address}</p>}
+            {invoice.vendor?.address && typeof invoice.vendor.address === 'string' && <p>{invoice.vendor.address}</p>}
+            {invoice.vendor?.address && typeof invoice.vendor.address === 'object' && (
+              <p>
+                {[
+                  invoice.vendor.address.street,
+                  invoice.vendor.address.city,
+                  invoice.vendor.address.state,
+                  invoice.vendor.address.pincode
+                ].filter(Boolean).join(', ')}
+              </p>
+            )}
             {invoice.vendor?.gstin && <p>GSTIN: {invoice.vendor.gstin}</p>}
           </div>
           <div className="invoice-meta">
@@ -230,7 +240,17 @@ const InvoiceDetails = () => {
               </div>
               <p>{invoice.customer?.email}</p>
               {invoice.customer?.phone && <p>{invoice.customer.phone}</p>}
-              {invoice.customer?.address && <p>{invoice.customer.address}</p>}
+              {invoice.customer?.address && typeof invoice.customer.address === 'string' && <p>{invoice.customer.address}</p>}
+              {invoice.customer?.address && typeof invoice.customer.address === 'object' && (
+                <p>
+                  {[
+                    invoice.customer.address.street,
+                    invoice.customer.address.city,
+                    invoice.customer.address.state,
+                    invoice.customer.address.pincode
+                  ].filter(Boolean).join(', ')}
+                </p>
+              )}
               {invoice.customer?.gstin && <p>GSTIN: {invoice.customer.gstin}</p>}
             </div>
           </div>

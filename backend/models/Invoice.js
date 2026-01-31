@@ -3,8 +3,7 @@ const mongoose = require('mongoose');
 const invoiceSchema = new mongoose.Schema({
   invoiceNumber: {
     type: String,
-    unique: true,
-    required: true
+    unique: true
   },
   order: {
     type: mongoose.Schema.Types.ObjectId,
@@ -130,11 +129,15 @@ const invoiceSchema = new mongoose.Schema({
   }
 });
 
-// Generate invoice number
-invoiceSchema.pre('save', async function(next) {
-  if (this.isNew) {
-    const count = await mongoose.model('Invoice').countDocuments();
-    this.invoiceNumber = `INV${String(count + 1).padStart(6, '0')}`;
+// Generate invoice number before validation
+invoiceSchema.pre('validate', async function(next) {
+  if (this.isNew && !this.invoiceNumber) {
+    try {
+      const count = await mongoose.model('Invoice').countDocuments();
+      this.invoiceNumber = `INV${String(count + 1).padStart(6, '0')}`;
+    } catch (error) {
+      console.error('Error generating invoice number:', error);
+    }
   }
   next();
 });
