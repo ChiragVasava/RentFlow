@@ -73,11 +73,13 @@
 }
 
 .btn-text.btn-danger {
-  color: #eab2b2;
+  color: #dc2626;
+  background: #fee2e2;
 }
 
 .btn-text.btn-danger:hover {
-  background: #fb0505;
+  background: #fecaca;
+  color: #991b1b;
 }
 
 /* Cart Item Card */
@@ -267,7 +269,7 @@
 
 .btn-icon.btn-danger {
   background: #fee2e2;
-  color: #deb3b3;
+  color: #991b1b;
 }
 
 .btn-icon.btn-danger:hover {
