@@ -1,7 +1,790 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import { 
+  FaPlus, FaEdit, FaTrash, FaEye, FaEyeSlash, FaBox, FaSave, FaTimes, 
+  FaUpload, FaImage, FaCog, FaInfoCircle 
+} from 'react-icons/fa';
+import { productsAPI } from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
+import './ManageProducts.css';
 
 const ManageProducts = () => {
-  return <div className="page-container"><h1>Manage Products</h1><p>Vendor products management page - full implementation included in source code</p></div>;
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showNewProductForm, setShowNewProductForm] = useState(false);
+  const [activeTab, setActiveTab] = useState('general');
+  const [editingProduct, setEditingProduct] = useState(null);
+
+  // Form state
+  const [formData, setFormData] = useState({
+    name: '',
+    productType: 'goods',
+    description: '',
+    quantityOnHand: 0,
+    salesPrice: 0,
+    costPrice: 0,
+    category: '',
+    rentalPricing: {
+      hourly: 0,
+      daily: 0,
+      weekly: 0
+    },
+    specifications: {
+      brand: '',
+      model: '',
+      condition: 'good',
+      color: '',
+      material: ''
+    },
+    images: []
+  });
+
+  const [attributes, setAttributes] = useState([
+    { id: 1, name: '', values: '' }
+  ]);
+
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState('');
+
+  const categories = [
+    'Electronics',
+    'Furniture',
+    'Construction Equipment',
+    'Audio/Video',
+    'Computers',
+    'Office Equipment',
+    'Photography',
+    'Party & Events',
+    'Sports Equipment',
+    'Tools & Machinery',
+    'Other'
+  ];
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      const response = await productsAPI.getAll();
+      // Filter to show only vendor's products
+      const vendorProducts = response.data.products.filter(
+        product => product.vendor?._id === user.id || product.vendor === user.id
+      );
+      setProducts(vendorProducts);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      toast.error('Failed to load products');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    
+    if (name.includes('.')) {
+      const [parent, child] = name.split('.');
+      setFormData(prev => ({
+        ...prev,
+        [parent]: {
+          ...prev[parent],
+          [child]: type === 'number' ? parseFloat(value) || 0 : value
+        }
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: type === 'checkbox' ? checked : type === 'number' ? parseFloat(value) || 0 : value
+      }));
+    }
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Image size should be less than 5MB');
+        return;
+      }
+
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleAddAttribute = () => {
+    setAttributes([...attributes, { id: Date.now(), name: '', values: '' }]);
+  };
+
+  const handleAttributeChange = (id, field, value) => {
+    setAttributes(attributes.map(attr =>
+      attr.id === id ? { ...attr, [field]: value } : attr
+    ));
+  };
+
+  const handleRemoveAttribute = (id) => {
+    setAttributes(attributes.filter(attr => attr.id !== id));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      // Validate required fields
+      if (!formData.name || !formData.category) {
+        toast.error('Please fill in all required fields');
+        setLoading(false);
+        return;
+      }
+
+      // Prepare product data
+      const productData = {
+        ...formData,
+        vendor: user.id,
+        isRentable: formData.productType === 'goods',
+        attributes: attributes
+          .filter(attr => attr.name && attr.values)
+          .map(attr => ({
+            name: attr.name,
+            value: attr.values
+          }))
+      };
+
+      // Handle image upload if there's a new image
+      if (imageFile) {
+        const formDataWithImage = new FormData();
+        formDataWithImage.append('image', imageFile);
+        
+        // For now, we'll use a placeholder URL since we don't have image upload configured
+        // In production, you'd upload to a cloud storage service
+        productData.images = [{
+          url: imagePreview,
+          isPrimary: true
+        }];
+      }
+
+      let response;
+      if (editingProduct) {
+        response = await productsAPI.update(editingProduct._id, productData);
+        toast.success('Product updated successfully');
+      } else {
+        response = await productsAPI.create(productData);
+        toast.success('Product created successfully');
+      }
+
+      // Reset form and refresh list
+      resetForm();
+      fetchProducts();
+      setShowNewProductForm(false);
+    } catch (error) {
+      console.error('Error saving product:', error);
+      toast.error(error.response?.data?.message || 'Failed to save product');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      productType: 'goods',
+      description: '',
+      quantityOnHand: 0,
+      salesPrice: 0,
+      costPrice: 0,
+      category: '',
+      rentalPricing: {
+        hourly: 0,
+        daily: 0,
+        weekly: 0
+      },
+      specifications: {
+        brand: '',
+        model: '',
+        condition: 'good',
+        color: '',
+        material: ''
+      },
+      images: []
+    });
+    setAttributes([{ id: 1, name: '', values: '' }]);
+    setImageFile(null);
+    setImagePreview('');
+    setEditingProduct(null);
+    setActiveTab('general');
+  };
+
+  const handleEdit = (product) => {
+    setEditingProduct(product);
+    setFormData({
+      name: product.name || '',
+      productType: product.isRentable ? 'goods' : 'service',
+      description: product.description || '',
+      quantityOnHand: product.quantityOnHand || 0,
+      salesPrice: product.salesPrice || 0,
+      costPrice: product.costPrice || 0,
+      category: product.category || '',
+      rentalPricing: product.rentalPricing || { hourly: 0, daily: 0, weekly: 0 },
+      specifications: product.specifications || {
+        brand: '',
+        model: '',
+        condition: 'good',
+        color: '',
+        material: ''
+      },
+      images: product.images || []
+    });
+
+    if (product.attributes && product.attributes.length > 0) {
+      setAttributes(product.attributes.map((attr, idx) => ({
+        id: idx + 1,
+        name: attr.name || '',
+        values: attr.value || ''
+      })));
+    }
+
+    if (product.images && product.images.length > 0) {
+      const primaryImage = product.images.find(img => img.isPrimary);
+      setImagePreview(primaryImage?.url || product.images[0].url);
+    }
+
+    setShowNewProductForm(true);
+  };
+
+  const handleDelete = async (productId) => {
+    if (window.confirm('Are you sure you want to delete this product?')) {
+      try {
+        await productsAPI.delete(productId);
+        toast.success('Product deleted successfully');
+        fetchProducts();
+      } catch (error) {
+        console.error('Error deleting product:', error);
+        toast.error('Failed to delete product');
+      }
+    }
+  };
+
+  const getPrimaryImage = (product) => {
+    if (product.images && product.images.length > 0) {
+      const primaryImage = product.images.find(img => img.isPrimary);
+      return primaryImage?.url || product.images[0]?.url || product.images[0];
+    }
+    return 'https://via.placeholder.com/100x100?text=No+Image';
+  };
+
+  if (loading && !showNewProductForm) {
+    return (
+      <div className="page-container">
+        <div className="loading-spinner">Loading products...</div>
+      </div>
+    );
+  }
+
+  if (showNewProductForm) {
+    return (
+      <div className="page-container">
+        <div className="page-header">
+          <h1 className="page-title">
+            {editingProduct ? 'Edit' : 'New'} Product
+          </h1>
+          <div className="header-actions">
+            <button 
+              className="btn btn-outline" 
+              onClick={() => {
+                resetForm();
+                setShowNewProductForm(false);
+              }}
+            >
+              <FaTimes /> Cancel
+            </button>
+            <button 
+              className="btn btn-primary" 
+              onClick={handleSubmit}
+              disabled={loading}
+            >
+              <FaSave /> {loading ? 'Saving...' : 'Save Product'}
+            </button>
+          </div>
+        </div>
+
+        <div className="product-form-card card">
+          {/* Tabs */}
+          <div className="form-tabs">
+            <button
+              className={`tab-btn ${activeTab === 'general' ? 'active' : ''}`}
+              onClick={() => setActiveTab('general')}
+            >
+              <FaInfoCircle /> General Information
+            </button>
+            <button
+              className={`tab-btn ${activeTab === 'attributes' ? 'active' : ''}`}
+              onClick={() => setActiveTab('attributes')}
+            >
+              <FaCog /> Attributes & Variants
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit}>
+            {/* General Information Tab */}
+            {activeTab === 'general' && (
+              <div className="tab-content">
+                <div className="form-layout">
+                  <div className="form-main">
+                    <div className="form-group">
+                      <label>Product Name *</label>
+                      <input
+                        type="text"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleInputChange}
+                        placeholder="Enter product name"
+                        required
+                      />
+                    </div>
+
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label>Product Type *</label>
+                        <div className="radio-group">
+                          <label className="radio-label">
+                            <input
+                              type="radio"
+                              name="productType"
+                              value="goods"
+                              checked={formData.productType === 'goods'}
+                              onChange={handleInputChange}
+                            />
+                            <span>Goods</span>
+                          </label>
+                          <label className="radio-label">
+                            <input
+                              type="radio"
+                              name="productType"
+                              value="service"
+                              checked={formData.productType === 'service'}
+                              onChange={handleInputChange}
+                            />
+                            <span>Service</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label>Quantity on Hand</label>
+                        <input
+                          type="number"
+                          name="quantityOnHand"
+                          value={formData.quantityOnHand}
+                          onChange={handleInputChange}
+                          min="0"
+                          step="1"
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label>Category *</label>
+                        <select
+                          name="category"
+                          value={formData.category}
+                          onChange={handleInputChange}
+                          required
+                        >
+                          <option value="">Select Category</option>
+                          {categories.map(cat => (
+                            <option key={cat} value={cat}>{cat}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label>Sales Price (₹) *</label>
+                        <div className="input-with-suffix">
+                          <span className="input-prefix">₹</span>
+                          <input
+                            type="number"
+                            name="salesPrice"
+                            value={formData.salesPrice}
+                            onChange={handleInputChange}
+                            min="0"
+                            step="0.01"
+                            required
+                          />
+                          <span className="input-suffix">Per Unit</span>
+                        </div>
+                      </div>
+
+                      <div className="form-group">
+                        <label>Cost Price (₹) *</label>
+                        <div className="input-with-suffix">
+                          <span className="input-prefix">₹</span>
+                          <input
+                            type="number"
+                            name="costPrice"
+                            value={formData.costPrice}
+                            onChange={handleInputChange}
+                            min="0"
+                            step="0.01"
+                            required
+                          />
+                          <span className="input-suffix">Per Unit</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Description</label>
+                      <textarea
+                        name="description"
+                        value={formData.description}
+                        onChange={handleInputChange}
+                        rows="4"
+                        placeholder="Enter product description"
+                      />
+                    </div>
+
+                    <div className="form-section">
+                      <h3>Rental Pricing</h3>
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label>Hourly Rate (₹)</label>
+                          <input
+                            type="number"
+                            name="rentalPricing.hourly"
+                            value={formData.rentalPricing.hourly}
+                            onChange={handleInputChange}
+                            min="0"
+                            step="0.01"
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label>Daily Rate (₹)</label>
+                          <input
+                            type="number"
+                            name="rentalPricing.daily"
+                            value={formData.rentalPricing.daily}
+                            onChange={handleInputChange}
+                            min="0"
+                            step="0.01"
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label>Weekly Rate (₹)</label>
+                          <input
+                            type="number"
+                            name="rentalPricing.weekly"
+                            value={formData.rentalPricing.weekly}
+                            onChange={handleInputChange}
+                            min="0"
+                            step="0.01"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="form-section">
+                      <h3>Specifications</h3>
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label>Brand</label>
+                          <input
+                            type="text"
+                            name="specifications.brand"
+                            value={formData.specifications.brand}
+                            onChange={handleInputChange}
+                            placeholder="e.g., Sony, Dell, etc."
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label>Model</label>
+                          <input
+                            type="text"
+                            name="specifications.model"
+                            value={formData.specifications.model}
+                            onChange={handleInputChange}
+                            placeholder="Model number"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label>Color</label>
+                          <input
+                            type="text"
+                            name="specifications.color"
+                            value={formData.specifications.color}
+                            onChange={handleInputChange}
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label>Material</label>
+                          <input
+                            type="text"
+                            name="specifications.material"
+                            value={formData.specifications.material}
+                            onChange={handleInputChange}
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label>Condition</label>
+                          <select
+                            name="specifications.condition"
+                            value={formData.specifications.condition}
+                            onChange={handleInputChange}
+                          >
+                            <option value="new">New</option>
+                            <option value="like-new">Like New</option>
+                            <option value="good">Good</option>
+                            <option value="fair">Fair</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Vendor Name</label>
+                      <input
+                        type="text"
+                        value={user?.companyName || user?.name || ''}
+                        disabled
+                        className="input-disabled"
+                      />
+                      <small className="form-hint">Auto-filled from your profile</small>
+                    </div>
+                  </div>
+
+                  <div className="form-sidebar">
+                    <div className="sidebar-section card">
+                      <h3>Product Image</h3>
+                      <div className="image-upload-area">
+                        {imagePreview ? (
+                          <div className="image-preview">
+                            <img src={imagePreview} alt="Preview" />
+                            <button
+                              type="button"
+                              className="btn-remove-image"
+                              onClick={() => {
+                                setImagePreview('');
+                                setImageFile(null);
+                              }}
+                            >
+                              <FaTrash />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="upload-placeholder">
+                            <FaImage />
+                            <p>No image selected</p>
+                          </div>
+                        )}
+                        <label className="btn btn-outline btn-block">
+                          <FaUpload /> Upload Image
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageChange}
+                            style={{ display: 'none' }}
+                          />
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="sidebar-section card">
+                      <h3>Publish Status</h3>
+                      <p className="status-info">
+                        <FaInfoCircle /> Only admin can publish products
+                      </p>
+                      <div className="status-badge">
+                        {formData.isPublished ? (
+                          <><FaEye /> Published</>
+                        ) : (
+                          <><FaEyeSlash /> Draft</>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Attributes & Variants Tab */}
+            {activeTab === 'attributes' && (
+              <div className="tab-content">
+                <div className="attributes-section">
+                  <div className="section-header">
+                    <h3>Attributes</h3>
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-sm"
+                      onClick={handleAddAttribute}
+                    >
+                      <FaPlus /> Add Row
+                    </button>
+                  </div>
+
+                  <div className="attributes-table">
+                    <div className="table-header">
+                      <div className="col-header">Attribute Name</div>
+                      <div className="col-header">Values</div>
+                      <div className="col-header">Actions</div>
+                    </div>
+
+                    {attributes.map((attr) => (
+                      <div key={attr.id} className="table-row">
+                        <div className="col-cell">
+                          <input
+                            type="text"
+                            value={attr.name}
+                            onChange={(e) => handleAttributeChange(attr.id, 'name', e.target.value)}
+                            placeholder="e.g., Brand, Color, Size"
+                          />
+                        </div>
+                        <div className="col-cell">
+                          <input
+                            type="text"
+                            value={attr.values}
+                            onChange={(e) => handleAttributeChange(attr.id, 'values', e.target.value)}
+                            placeholder="e.g., Red, Green, Blue (comma separated)"
+                          />
+                        </div>
+                        <div className="col-cell">
+                          {attributes.length > 1 && (
+                            <button
+                              type="button"
+                              className="btn-icon btn-danger"
+                              onClick={() => handleRemoveAttribute(attr.id)}
+                            >
+                              <FaTrash />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="attributes-hint">
+                    <FaInfoCircle /> Add attributes like Brand, Color, Size, etc. to describe product variants
+                  </div>
+                </div>
+              </div>
+            )}
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="page-container">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">
+            <FaBox /> My Products
+          </h1>
+          <p className="page-subtitle">
+            Manage your rental products
+          </p>
+        </div>
+        <button 
+          className="btn btn-primary"
+          onClick={() => setShowNewProductForm(true)}
+        >
+          <FaPlus /> New Product
+        </button>
+      </div>
+
+      {products.length === 0 ? (
+        <div className="empty-state card">
+          <FaBox className="empty-icon" />
+          <h3>No Products Yet</h3>
+          <p>Start by adding your first product</p>
+          <button 
+            className="btn btn-primary"
+            onClick={() => setShowNewProductForm(true)}
+          >
+            <FaPlus /> Add Product
+          </button>
+        </div>
+      ) : (
+        <div className="products-grid">
+          {products.map((product) => (
+            <div key={product._id} className="product-card card">
+              <div className="product-image">
+                <img src={getPrimaryImage(product)} alt={product.name} />
+                <div className="product-status">
+                  {product.isPublished ? (
+                    <span className="status-badge published">
+                      <FaEye /> Published
+                    </span>
+                  ) : (
+                    <span className="status-badge draft">
+                      <FaEyeSlash /> Draft
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="product-info">
+                <h3 className="product-name">{product.name}</h3>
+                <p className="product-category">{product.category}</p>
+                
+                <div className="product-details">
+                  <div className="detail-row">
+                    <span className="label">Stock:</span>
+                    <span className="value">{product.quantityOnHand} units</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="label">Price:</span>
+                    <span className="value">₹{product.salesPrice?.toLocaleString()}</span>
+                  </div>
+                  {product.rentalPricing?.daily > 0 && (
+                    <div className="detail-row">
+                      <span className="label">Daily Rental:</span>
+                      <span className="value">₹{product.rentalPricing.daily?.toLocaleString()}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="product-actions">
+                <button
+                  className="btn btn-outline btn-sm"
+                  onClick={() => handleEdit(product)}
+                >
+                  <FaEdit /> Edit
+                </button>
+                <button
+                  className="btn btn-outline btn-sm btn-danger"
+                  onClick={() => handleDelete(product._id)}
+                >
+                  <FaTrash /> Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default ManageProducts;
