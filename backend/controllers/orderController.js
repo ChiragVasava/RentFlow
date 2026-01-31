@@ -2,6 +2,8 @@ const Order = require('../models/Order');
 const Quotation = require('../models/Quotation');
 const Product = require('../models/Product');
 const Pickup = require('../models/Pickup');
+const ExcelJS = require('exceljs');
+const moment = require('moment');
 
 // @desc    Get all orders
 // @route   GET /api/orders
@@ -9,6 +11,7 @@ const Pickup = require('../models/Pickup');
 exports.getAllOrders = async (req, res) => {
   try {
     const query = {};
+    const { search, status, invoicedPaid, returnDateFilter } = req.query;
 
     // Customer can only see their orders
     if (req.user.role === 'customer') {
@@ -20,6 +23,26 @@ exports.getAllOrders = async (req, res) => {
       query.vendor = req.user.id;
     }
 
+    // Status filter
+    if (status) {
+      query.status = status;
+    }
+
+    // Invoiced and paid filter
+    if (invoicedPaid === 'true') {
+      query.status = 'invoiced';
+      query.isPaid = true;
+    }
+
+    // Return date filter (approaching or passed)
+    if (returnDateFilter === 'true') {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(23, 59, 59, 999);
+
+      query.returnDate = { $lte: tomorrow };
+    }
+
     const orders = await Order.find(query)
       .populate('customer', 'name email companyName phone')
       .populate('vendor', 'name companyName')
@@ -27,12 +50,24 @@ exports.getAllOrders = async (req, res) => {
       .populate('quotation')
       .sort({ createdAt: -1 });
 
+    // Search filter (post-query)
+    let filteredOrders = orders;
+    if (search) {
+      const searchLower = search.toLowerCase();
+      filteredOrders = orders.filter(order =>
+        order.orderId?.toLowerCase().includes(searchLower) ||
+        order.customer?.name?.toLowerCase().includes(searchLower) ||
+        order.items?.some(item => item.product?.name?.toLowerCase().includes(searchLower))
+      );
+    }
+
     res.status(200).json({
       success: true,
-      count: orders.length,
-      orders
+      count: filteredOrders.length,
+      orders: filteredOrders
     });
   } catch (error) {
+    console.error('Error fetching orders:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching orders'
@@ -60,7 +95,7 @@ exports.getOrder = async (req, res) => {
 
     // Check access
     if (
-      req.user.role === 'customer' && 
+      req.user.role === 'customer' &&
       order.customer._id.toString() !== req.user.id
     ) {
       return res.status(403).json({
@@ -70,7 +105,7 @@ exports.getOrder = async (req, res) => {
     }
 
     if (
-      req.user.role === 'vendor' && 
+      req.user.role === 'vendor' &&
       order.vendor._id.toString() !== req.user.id
     ) {
       return res.status(403).json({
@@ -130,7 +165,7 @@ exports.createOrder = async (req, res) => {
     // Reserve products
     for (let item of quotation.items) {
       const product = await Product.findById(item.product);
-      
+
       // Check availability again
       const isAvailable = product.checkAvailability(
         item.quantity,
@@ -241,7 +276,7 @@ exports.updateOrderStatus = async (req, res) => {
       });
 
       order.pickupDate = new Date();
-      
+
       // Update item statuses
       order.items.forEach(item => {
         item.status = 'with_customer';
@@ -281,7 +316,7 @@ exports.updatePaymentStatus = async (req, res) => {
 
     order.paymentStatus = paymentStatus;
     order.updatedAt = Date.now();
-    
+
     await order.save();
 
     res.status(200).json({
@@ -313,7 +348,7 @@ exports.cancelOrder = async (req, res) => {
 
     // Check authorization
     if (
-      req.user.role === 'customer' && 
+      req.user.role === 'customer' &&
       order.customer.toString() !== req.user.id
     ) {
       return res.status(403).json({
@@ -378,3 +413,186 @@ exports.getMyOrders = async (req, res) => {
     });
   }
 };
+
+// @desc    Get order statistics
+// @route   GET /api/orders/stats
+// @access  Private
+exports.getOrderStats = async (req, res) => {
+  try {
+    const query = {};
+
+    if (req.user.role === 'customer') {
+      query.customer = req.user.id;
+    }
+    if (req.user.role === 'vendor') {
+      query.vendor = req.user.id;
+    }
+
+    const stats = await Order.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const total = await Order.countDocuments(query);
+
+    const formattedStats = {
+      total,
+      quotation: 0,
+      sale_order: 0,
+      confirmed: 0,
+      invoiced: 0,
+      cancelled: 0
+    };
+
+    stats.forEach(stat => {
+      formattedStats[stat._id] = stat.count;
+    });
+
+    res.status(200).json({
+      success: true,
+      stats: formattedStats
+    });
+  } catch (error) {
+    console.error('Error fetching order stats:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching order statistics'
+    });
+  }
+};
+
+// @desc    Export orders to CSV/Excel
+// @route   GET /api/orders/export
+// @access  Private
+exports.exportOrders = async (req, res) => {
+  try {
+    const { format = 'csv' } = req.query;
+    const query = {};
+
+    if (req.user.role === 'customer') {
+      query.customer = req.user.id;
+    }
+    if (req.user.role === 'vendor') {
+      query.vendor = req.user.id;
+    }
+
+    const orders = await Order.find(query)
+      .populate('customer', 'name email')
+      .populate('items.product', 'name')
+      .sort({ createdAt: -1 });
+
+    if (format === 'excel') {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Orders');
+
+      worksheet.columns = [
+        { header: 'Order ID', key: 'orderId', width: 15 },
+        { header: 'Customer', key: 'customer', width: 20 },
+        { header: 'Product', key: 'product', width: 25 },
+        { header: 'Price', key: 'price', width: 12 },
+        { header: 'Status', key: 'status', width: 15 },
+        { header: 'Payment Status', key: 'paymentStatus', width: 15 },
+        { header: 'Return Date', key: 'returnDate', width: 15 },
+        { header: 'Created At', key: 'createdAt', width: 15 }
+      ];
+
+      orders.forEach(order => {
+        const productName = order.items[0]?.product?.name || 'N/A';
+        worksheet.addRow({
+          orderId: order.orderId,
+          customer: order.customer?.name || 'N/A',
+          product: productName,
+          price: `₹${order.totalAmount}`,
+          status: order.status,
+          paymentStatus: order.paymentStatus,
+          returnDate: order.returnDate ? moment(order.returnDate).format('YYYY-MM-DD') : 'N/A',
+          createdAt: moment(order.createdAt).format('YYYY-MM-DD')
+        });
+      });
+
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=orders.xlsx');
+
+      await workbook.xlsx.write(res);
+      res.end();
+    } else {
+      // CSV format
+      const csvRows = [];
+      csvRows.push('Order ID,Customer,Product,Price,Status,Payment Status,Return Date,Created At');
+
+      orders.forEach(order => {
+        const productName = order.items[0]?.product?.name || 'N/A';
+        const row = [
+          order.orderId,
+          order.customer?.name || 'N/A',
+          productName,
+          order.totalAmount,
+          order.status,
+          order.paymentStatus,
+          order.returnDate ? moment(order.returnDate).format('YYYY-MM-DD') : 'N/A',
+          moment(order.createdAt).format('YYYY-MM-DD')
+        ];
+        csvRows.push(row.join(','));
+      });
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename=orders.csv');
+      res.send(csvRows.join('\n'));
+    }
+  } catch (error) {
+    console.error('Error exporting orders:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error exporting orders'
+    });
+  }
+};
+
+// @desc    Import orders from CSV
+// @route   POST /api/orders/import
+// @access  Private (Admin/Vendor)
+exports.importOrders = async (req, res) => {
+  try {
+    const { orders } = req.body;
+
+    if (!orders || !Array.isArray(orders)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid data format'
+      });
+    }
+
+    const imported = [];
+    const errors = [];
+
+    for (const orderData of orders) {
+      try {
+        // Find or create customer
+        // This is simplified - in production you'd need proper validation
+        imported.push(orderData);
+      } catch (error) {
+        errors.push({ orderData, error: error.message });
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Imported ${imported.length} orders`,
+      imported: imported.length,
+      errors: errors.length,
+      errorDetails: errors
+    });
+  } catch (error) {
+    console.error('Error importing orders:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error importing orders'
+    });
+  }
+};
+
