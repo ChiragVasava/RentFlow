@@ -7,18 +7,12 @@ const {
   updateOrderStatus,
   updatePaymentStatus,
   cancelOrder,
-  getMyOrders,
-  getOrderStats,
-  exportOrders,
-  importOrders
+  getMyOrders
 } = require('../controllers/orderController');
 const { protect, authorize } = require('../middleware/auth');
 
 router.use(protect);
 
-router.get('/stats', getOrderStats);
-router.get('/export', exportOrders);
-router.post('/import', authorize('vendor', 'admin'), importOrders);
 router.get('/', getAllOrders);
 router.post('/', createOrder);
 router.get('/customer/my-orders', getMyOrders);

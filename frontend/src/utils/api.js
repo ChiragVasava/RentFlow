@@ -66,16 +66,13 @@ export const quotationsAPI = {
 
 // Orders API
 export const ordersAPI = {
-  getAll: (params) => api.get('/orders', { params }),
+  getAll: () => api.get('/orders'),
   getOne: (id) => api.get(`/orders/${id}`),
   create: (data) => api.post('/orders', data),
   updateStatus: (id, data) => api.put(`/orders/${id}/status`, data),
   updatePayment: (id, data) => api.put(`/orders/${id}/payment`, data),
   cancel: (id) => api.put(`/orders/${id}/cancel`),
-  getMyOrders: () => api.get('/orders/customer/my-orders'),
-  getStats: () => api.get('/orders/stats'),
-  export: (format) => api.get(`/orders/export?format=${format}`, { responseType: 'blob' }),
-  import: (data) => api.post('/orders/import', data)
+  getMyOrders: () => api.get('/orders/customer/my-orders')
 };
 
 // Invoices API
