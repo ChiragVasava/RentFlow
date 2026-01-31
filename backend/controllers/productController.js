@@ -43,10 +43,13 @@ exports.getAllProducts = async (req, res) => {
       query.isPublished = true;
     }
 
-    // If vendor is logged in, show only their products
+    // If vendor is logged in, show only their products (both published and unpublished)
     if (req.user && req.user.role === 'vendor') {
       query.vendor = req.user.id;
     }
+
+    console.log('Product query:', query);
+    console.log('User:', req.user ? { id: req.user.id, role: req.user.role } : 'Not authenticated');
 
     const skip = (page - 1) * limit;
     const sortOrder = order === 'desc' ? -1 : 1;
@@ -56,6 +59,8 @@ exports.getAllProducts = async (req, res) => {
       .sort({ [sortBy]: sortOrder })
       .limit(parseInt(limit))
       .skip(skip);
+
+    console.log(`Found ${products.length} products for query`);
 
     const total = await Product.countDocuments(query);
 
@@ -114,7 +119,15 @@ exports.createProduct = async (req, res) => {
       req.body.vendor = req.user.id;
     }
 
+    console.log('Creating product with data:', {
+      name: req.body.name,
+      vendor: req.body.vendor,
+      createdBy: req.user.id
+    });
+
     const product = await Product.create(req.body);
+
+    console.log('Product created successfully:', product._id);
 
     res.status(201).json({
       success: true,

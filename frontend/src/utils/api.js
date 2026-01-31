@@ -51,7 +51,8 @@ export const productsAPI = {
   update: (id, data) => api.put(`/products/${id}`, data),
   delete: (id) => api.delete(`/products/${id}`),
   checkAvailability: (id, data) => api.post(`/products/${id}/check-availability`, data),
-  getCategories: () => api.get('/products/categories/list')
+  getCategories: () => api.get('/products/categories/list'),
+  getMyProducts: () => api.get('/products/vendor/my-products')
 };
 
 // Quotations API

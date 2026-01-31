@@ -22,14 +22,14 @@ const ManageProducts = () => {
     name: '',
     productType: 'goods',
     description: '',
-    quantityOnHand: 0,
-    salesPrice: 0,
-    costPrice: 0,
+    quantityOnHand: '',
+    salesPrice: '',
+    costPrice: '',
     category: '',
     rentalPricing: {
-      hourly: 0,
-      daily: 0,
-      weekly: 0
+      hourly: '',
+      daily: '',
+      weekly: ''
     },
     specifications: {
       brand: '',
@@ -69,9 +69,8 @@ const ManageProducts = () => {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const response = await productsAPI.getAll();
-      console.log('Fetched products response:', response.data);
-      // Backend already filters vendor products when vendor is logged in
+      const response = await productsAPI.getMyProducts();
+      console.log('Fetched MY products response:', response.data);
       setProducts(response.data.products || []);
     } catch (error) {
       console.error('Error fetching products:', error);
@@ -90,13 +89,13 @@ const ManageProducts = () => {
         ...prev,
         [parent]: {
           ...prev[parent],
-          [child]: type === 'number' ? parseFloat(value) || 0 : value
+          [child]: type === 'number' ? (value === '' ? '' : parseFloat(value) || '') : value
         }
       }));
     } else {
       setFormData(prev => ({
         ...prev,
-        [name]: type === 'checkbox' ? checked : type === 'number' ? parseFloat(value) || 0 : value
+        [name]: type === 'checkbox' ? checked : type === 'number' ? (value === '' ? '' : parseFloat(value) || '') : value
       }));
     }
   };
@@ -147,6 +146,15 @@ const ManageProducts = () => {
         ...formData,
         vendor: user.id,
         isRentable: formData.productType === 'goods',
+        // Convert empty strings to 0 for numbers
+        quantityOnHand: parseInt(formData.quantityOnHand) || 0,
+        salesPrice: parseFloat(formData.salesPrice) || 0,
+        costPrice: parseFloat(formData.costPrice) || 0,
+        rentalPricing: {
+          hourly: parseFloat(formData.rentalPricing.hourly) || 0,
+          daily: parseFloat(formData.rentalPricing.daily) || 0,
+          weekly: parseFloat(formData.rentalPricing.weekly) || 0
+        },
         attributes: attributes
           .filter(attr => attr.name && attr.values)
           .map(attr => ({
@@ -197,14 +205,14 @@ const ManageProducts = () => {
       name: '',
       productType: 'goods',
       description: '',
-      quantityOnHand: 0,
-      salesPrice: 0,
-      costPrice: 0,
+      quantityOnHand: '',
+      salesPrice: '',
+      costPrice: '',
       category: '',
       rentalPricing: {
-        hourly: 0,
-        daily: 0,
-        weekly: 0
+        hourly: '',
+        daily: '',
+        weekly: ''
       },
       specifications: {
         brand: '',
@@ -388,6 +396,7 @@ const ManageProducts = () => {
                           onChange={handleInputChange}
                           min="0"
                           step="1"
+                          placeholder="0"
                         />
                       </div>
 
@@ -419,6 +428,7 @@ const ManageProducts = () => {
                             onChange={handleInputChange}
                             min="0"
                             step="0.01"
+                            placeholder="0.00"
                             required
                           />
                           <span className="input-suffix">Per Unit</span>
@@ -436,6 +446,7 @@ const ManageProducts = () => {
                             onChange={handleInputChange}
                             min="0"
                             step="0.01"
+                            placeholder="0.00"
                             required
                           />
                           <span className="input-suffix">Per Unit</span>
@@ -466,6 +477,7 @@ const ManageProducts = () => {
                             onChange={handleInputChange}
                             min="0"
                             step="0.01"
+                            placeholder="0.00"
                           />
                         </div>
 
@@ -478,6 +490,7 @@ const ManageProducts = () => {
                             onChange={handleInputChange}
                             min="0"
                             step="0.01"
+                            placeholder="0.00"
                           />
                         </div>
 
@@ -490,6 +503,7 @@ const ManageProducts = () => {
                             onChange={handleInputChange}
                             min="0"
                             step="0.01"
+                            placeholder="0.00"
                           />
                         </div>
                       </div>
