@@ -64,9 +64,10 @@ const ProductDetails = () => {
         startDate,
         endDate
       });
-      setIsAvailable(response.data.available);
+      setIsAvailable(response.data.isAvailable);
     } catch (error) {
       console.error('Error checking availability:', error);
+      setIsAvailable(true); // Default to available on error
     }
   };
 
@@ -287,7 +288,7 @@ const ProductDetails = () => {
             <div className="pricing-section">
               <h3>Rental Pricing</h3>
               <div className="pricing-options">
-                {product.rentalPricing?.hourly && (
+                {product.rentalPricing?.hourly > 0 && (
                   <div 
                     className={`pricing-card ${selectedPricingType === 'hourly' ? 'selected' : ''}`}
                     onClick={() => setSelectedPricingType('hourly')}
@@ -296,7 +297,7 @@ const ProductDetails = () => {
                     <span className="price-value">₹{product.rentalPricing.hourly}/hr</span>
                   </div>
                 )}
-                {product.rentalPricing?.daily && (
+                {product.rentalPricing?.daily > 0 && (
                   <div 
                     className={`pricing-card ${selectedPricingType === 'daily' ? 'selected' : ''}`}
                     onClick={() => setSelectedPricingType('daily')}
@@ -305,7 +306,7 @@ const ProductDetails = () => {
                     <span className="price-value">₹{product.rentalPricing.daily}/day</span>
                   </div>
                 )}
-                {product.rentalPricing?.weekly && (
+                {product.rentalPricing?.weekly > 0 && (
                   <div 
                     className={`pricing-card ${selectedPricingType === 'weekly' ? 'selected' : ''}`}
                     onClick={() => setSelectedPricingType('weekly')}

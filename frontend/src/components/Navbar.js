@@ -15,17 +15,28 @@ const Navbar = () => {
     navigate('/');
   };
 
+  const getInitials = (name) => {
+    if (!name) return 'U';
+    const names = name.split(' ');
+    if (names.length >= 2) {
+      return (names[0][0] + names[names.length - 1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
   return (
     <nav className="navbar">
       <div className="navbar-container">
-        <Link to="/" className="navbar-logo">
-          <span className="logo-text">Rental</span>
-          <span className="logo-accent">Hub</span>
+        <Link to={isAuthenticated ? "/products" : "/"} className="navbar-logo">
+          <span className="logo-text">Rent</span>
+          <span className="logo-accent">Flow</span>
         </Link>
 
         <ul className="navbar-menu">
-          <li><Link to="/" className="navbar-link">Home</Link></li>
-          <li><Link to="/products" className="navbar-link">Products</Link></li>
+          {!isAuthenticated && (
+            <li><Link to="/" className="navbar-link">Home</Link></li>
+          )}
+          <li><Link to="/products" className="navbar-link">Shop</Link></li>
           
           {isAuthenticated ? (
             <>
@@ -55,9 +66,9 @@ const Navbar = () => {
               )}
               
               <li className="navbar-dropdown">
-                <button className="navbar-link dropdown-toggle">
-                  <FaUser /> {user?.name}
-                </button>
+                <div className="profile-circle">
+                  {getInitials(user?.name)}
+                </div>
                 <ul className="dropdown-menu">
                   <li><Link to="/profile" className="dropdown-item">Profile</Link></li>
                   <li><Link to="/orders" className="dropdown-item">My Orders</Link></li>
