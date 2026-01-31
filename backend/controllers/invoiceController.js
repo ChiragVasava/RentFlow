@@ -1,5 +1,6 @@
 const Invoice = require('../models/Invoice');
 const Order = require('../models/Order');
+const SaleOrder = require('../models/SaleOrder');
 
 // @desc    Get all invoices
 // @route   GET /api/invoices
@@ -91,10 +92,21 @@ exports.getInvoice = async (req, res) => {
 // @access  Private (Vendor/Admin)
 exports.createInvoice = async (req, res) => {
   try {
-    const { orderId, dueDate, notes } = req.body;
+    const { orderId, dueDate, notes, orderType = 'rental' } = req.body;
 
-    const order = await Order.findById(orderId)
-      .populate('items.product', 'name');
+    let order;
+    
+    // Try to find in Order (rental) first, then SaleOrder
+    if (orderType === 'sale') {
+      order = await SaleOrder.findById(orderId).populate('items.product', 'name');
+    } else {
+      order = await Order.findById(orderId).populate('items.product', 'name');
+      
+      // If not found in Order, try SaleOrder
+      if (!order) {
+        order = await SaleOrder.findById(orderId).populate('items.product', 'name');
+      }
+    }
 
     if (!order) {
       return res.status(404).json({
@@ -121,40 +133,50 @@ exports.createInvoice = async (req, res) => {
     }
 
     // Prepare invoice items
-    const invoiceItems = order.items.map(item => ({
-      product: item.product._id,
-      productName: item.product.name,
-      quantity: item.quantity,
-      pricePerUnit: item.pricePerUnit,
-      totalPrice: item.totalPrice,
-      rentalPeriod: `${new Date(item.rentalStartDate).toLocaleDateString()} - ${new Date(item.rentalEndDate).toLocaleDateString()}`
-    }));
+    const invoiceItems = order.items.map(item => {
+      let rentalPeriod = 'N/A';
+      
+      if (item.rentalStartDate && item.rentalEndDate) {
+        rentalPeriod = `${new Date(item.rentalStartDate).toLocaleDateString()} - ${new Date(item.rentalEndDate).toLocaleDateString()}`;
+      } else if (order.startDate && order.endDate) {
+        rentalPeriod = `${new Date(order.startDate).toLocaleDateString()} - ${new Date(order.endDate).toLocaleDateString()}`;
+      }
+
+      return {
+        product: item.product._id,
+        productName: item.product.name,
+        quantity: item.quantity,
+        pricePerUnit: item.pricePerUnit || item.price,
+        totalPrice: item.totalPrice || (item.price * item.quantity),
+        rentalPeriod
+      };
+    });
 
     // Calculate taxes (CGST + SGST for same state, IGST for different state)
     const { discount = 0, discountType = 'fixed', paymentType = 'full', initialPayment = 0 } = req.body;
     
-    let subtotal = order.subtotal;
+    let subtotal = order.subtotal || order.totalAmount;
     let discountAmount = 0;
     
     if (discount > 0) {
       discountAmount = discountType === 'percentage' 
         ? (subtotal * discount) / 100 
         : discount;
-      subtotal -= discountAmount;
     }
 
+    const subtotalAfterDiscount = subtotal - discountAmount;
     const taxRate = order.taxRate || 18;
-    const taxAmount = (subtotal * taxRate) / 100;
+    const taxAmount = (subtotalAfterDiscount * taxRate) / 100;
     const cgst = taxAmount / 2;
     const sgst = taxAmount / 2;
-    const totalAmount = subtotal + taxAmount;
+    const totalAmount = subtotalAfterDiscount + taxAmount;
 
     const invoice = await Invoice.create({
       order: orderId,
       customer: order.customer,
       vendor: order.vendor,
       items: invoiceItems,
-      subtotal: order.subtotal,
+      subtotal: order.subtotal || order.totalAmount,
       discount: discountAmount,
       discountType,
       taxRate,
@@ -168,6 +190,10 @@ exports.createInvoice = async (req, res) => {
       paidAmount: initialPayment || 0,
       balanceAmount: totalAmount - (initialPayment || 0),
       paymentType,
+      dueDate: dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      notes,
+      status: initialPayment >= totalAmount ? 'paid' : initialPayment > 0 ? 'partial' : 'draft'
+    });
       dueDate: dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       notes,
       status: initialPayment >= totalAmount ? 'paid' : initialPayment > 0 ? 'partial' : 'draft'
@@ -230,10 +256,20 @@ exports.addPayment = async (req, res) => {
     invoice.updatedAt = Date.now();
     await invoice.save();
 
-    // Update order payment status
-    await Order.findByIdAndUpdate(invoice.order, {
-      paymentStatus: invoice.status === 'paid' ? 'paid' : 'partial'
-    });
+    // Update order payment status - try both models
+    try {
+      const orderUpdate = await Order.findByIdAndUpdate(invoice.order, {
+        paymentStatus: invoice.status === 'paid' ? 'paid' : 'partial'
+      });
+      
+      if (!orderUpdate) {
+        await SaleOrder.findByIdAndUpdate(invoice.order, {
+          paymentStatus: invoice.status === 'paid' ? 'paid' : 'partial'
+        });
+      }
+    } catch (err) {
+      console.error('Error updating order payment status:', err);
+    }
 
     res.status(200).json({
       success: true,

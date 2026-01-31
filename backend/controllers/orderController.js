@@ -226,26 +226,32 @@ exports.updateOrderStatus = async (req, res) => {
 
     // If status is picked_up, create pickup document
     if (status === 'picked_up') {
-      const pickup = await Pickup.create({
-        order: order._id,
-        customer: order.customer,
-        vendor: order.vendor,
-        items: order.items.map(item => ({
-          product: item.product,
-          quantity: item.quantity,
-          condition: 'good'
-        })),
-        scheduledDate: order.pickupDate,
-        pickupAddress: order.shippingAddress,
-        status: 'completed'
-      });
+      try {
+        const pickup = await Pickup.create({
+          order: order._id,
+          customer: order.customer,
+          vendor: order.vendor,
+          items: order.items.map(item => ({
+            product: item.product._id || item.product,
+            quantity: item.quantity,
+            condition: 'good'
+          })),
+          scheduledDate: order.pickupDate || new Date(),
+          pickupAddress: order.shippingAddress || {},
+          pickupDate: new Date(),
+          status: 'completed'
+        });
 
-      order.pickupDate = new Date();
-      
-      // Update item statuses
-      order.items.forEach(item => {
-        item.status = 'with_customer';
-      });
+        order.pickupDate = new Date();
+        
+        // Update item statuses
+        order.items.forEach(item => {
+          item.status = 'with_customer';
+        });
+      } catch (pickupError) {
+        console.error('Error creating pickup:', pickupError);
+        // Continue even if pickup creation fails
+      }
     }
 
     await order.save();
