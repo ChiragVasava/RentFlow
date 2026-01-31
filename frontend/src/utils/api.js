@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -66,13 +66,16 @@ export const quotationsAPI = {
 
 // Orders API
 export const ordersAPI = {
-  getAll: () => api.get('/orders'),
+  getAll: (params) => api.get('/orders', { params }),
   getOne: (id) => api.get(`/orders/${id}`),
   create: (data) => api.post('/orders', data),
   updateStatus: (id, data) => api.put(`/orders/${id}/status`, data),
   updatePayment: (id, data) => api.put(`/orders/${id}/payment`, data),
   cancel: (id) => api.put(`/orders/${id}/cancel`),
-  getMyOrders: () => api.get('/orders/customer/my-orders')
+  getMyOrders: () => api.get('/orders/customer/my-orders'),
+  getStats: () => api.get('/orders/stats'),
+  export: (format) => api.get(`/orders/export?format=${format}`, { responseType: 'blob' }),
+  import: (data) => api.post('/orders/import', data)
 };
 
 // Invoices API
