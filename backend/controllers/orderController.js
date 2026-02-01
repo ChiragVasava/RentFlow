@@ -3,6 +3,7 @@ const Quotation = require('../models/Quotation');
 const Product = require('../models/Product');
 const Pickup = require('../models/Pickup');
 const SaleOrder = require('../models/SaleOrder');
+const User = require('../models/User');
 
 // @desc    Get all orders
 // @route   GET /api/orders
@@ -158,6 +159,8 @@ exports.createOrder = async (req, res) => {
       })),
       subtotal: quotation.subtotal,
       taxAmount: quotation.taxAmount,
+      discountAmount: quotation.discountAmount,
+      discountType: quotation.discountType,
       totalAmount: quotation.totalAmount,
       securityDeposit: securityDeposit || 0,
       shippingAddress,
@@ -215,6 +218,11 @@ exports.createOrder = async (req, res) => {
     } catch (saleOrderError) {
       console.error('Error creating automatic sale order:', saleOrderError);
       // Don't fail the order creation if sale order fails
+    }
+
+    // Mark coupon as used if discount was applied
+    if (quotation.discountAmount > 0 && quotation.discountType === 'coupon') {
+      await User.findByIdAndUpdate(req.user.id, { hasUsedCoupon: true });
     }
 
     await order.populate('customer', 'name email companyName');

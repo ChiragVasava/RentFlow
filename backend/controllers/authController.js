@@ -377,3 +377,181 @@ exports.updatePassword = async (req, res) => {
     });
   }
 };
+
+// @desc    Forgot password
+// @route   POST /api/auth/forgot-password
+// @access  Public
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found with this email'
+      });
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(20).toString('hex');
+
+    // Hash token and set to resetPasswordToken field
+    user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    user.resetPasswordExpire = Date.now() + 60 * 60 * 1000; // 1 hour
+
+    await user.save();
+
+    // Create reset URL
+    const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password/${resetToken}`;
+
+    // For development - log the reset URL to console
+    if (process.env.NODE_ENV === 'development' || !process.env.EMAIL_USER) {
+      console.log('='.repeat(50));
+      console.log('PASSWORD RESET REQUEST');
+      console.log('='.repeat(50));
+      console.log(`Email: ${user.email}`);
+      console.log(`Reset URL: ${resetUrl}`);
+      console.log(`Token expires: ${new Date(user.resetPasswordExpire)}`);
+      console.log('='.repeat(50));
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Password reset link generated (check server console for development)',
+        resetUrl: process.env.NODE_ENV === 'development' ? resetUrl : undefined
+      });
+    }
+
+    // Production - Send email (configure nodemailer transporter)
+    const transporter = nodemailer.createTransport({
+      host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+      port: process.env.EMAIL_PORT || 587,
+      secure: false,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    });
+
+    const message = `
+      <h2>Password Reset Request</h2>
+      <p>You have requested a password reset for your RentFlow account.</p>
+      <p>Please click the link below to reset your password:</p>
+      <a href="${resetUrl}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Reset Password</a>
+      <p>This link will expire in 1 hour.</p>
+      <p>If you did not request this, please ignore this email.</p>
+    `;
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_FROM || 'noreply@rentflow.com',
+      to: user.email,
+      subject: 'Password Reset Request - RentFlow',
+      html: message
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Password reset email sent'
+    });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    
+    // Clear reset token fields if email sending fails
+    if (user && user.resetPasswordToken) {
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpire = undefined;
+      await user.save();
+    }
+
+    // More helpful error message for development
+    if (process.env.NODE_ENV === 'development') {
+      res.status(500).json({
+        success: false,
+        message: 'Email not configured. Check server console for reset link or set up email credentials.',
+        error: error.message
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Email could not be sent'
+      });
+    }
+  }
+};
+
+// @desc    Verify reset token
+// @route   GET /api/auth/verify-reset-token/:token
+// @access  Public
+exports.verifyResetToken = async (req, res) => {
+  try {
+    // Get hashed token
+    const resetPasswordToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
+
+    const user = await User.findOne({
+      resetPasswordToken,
+      resetPasswordExpire: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired token'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Valid token'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error verifying token'
+    });
+  }
+};
+
+// @desc    Reset password
+// @route   POST /api/auth/reset-password
+// @access  Public
+exports.resetPassword = async (req, res) => {
+  try {
+    const { token, password } = req.body;
+
+    // Get hashed token
+    const resetPasswordToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    const user = await User.findOne({
+      resetPasswordToken,
+      resetPasswordExpire: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired token'
+      });
+    }
+
+    // Set new password
+    user.password = password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save();
+
+    // Generate new token for immediate login
+    const authToken = generateToken(user._id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Password reset successful',
+      token: authToken
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error resetting password'
+    });
+  }
+};

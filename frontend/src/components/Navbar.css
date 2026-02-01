@@ -16,6 +16,8 @@
 }
 
 .navbar-logo {
+  position:relative;
+  right: 140px;
   font-size: 1.8rem;
   font-weight: 700;
   text-decoration: none;

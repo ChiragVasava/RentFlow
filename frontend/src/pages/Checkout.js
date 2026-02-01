@@ -67,6 +67,23 @@ const Checkout = () => {
     return cartItems.reduce((total, item) => total + (item.price || 0), 0);
   };
 
+  const calculateDiscount = () => {
+    // Check if user has coupon and hasn't used it
+    if (user?.couponCode && !user?.hasUsedCoupon) {
+      const subtotal = calculateTotal();
+      return Math.round(subtotal * 0.20); // 20% discount
+    }
+    return 0;
+  };
+
+  const calculateFinalTotal = () => {
+    const subtotal = calculateTotal();
+    const discount = calculateDiscount();
+    const discountedSubtotal = subtotal - discount;
+    const tax = Math.round(discountedSubtotal * 0.18);
+    return discountedSubtotal + tax;
+  };
+
   const handleAddressSubmit = (e) => {
     e.preventDefault();
     
@@ -545,18 +562,33 @@ const Checkout = () => {
                 <span>Subtotal</span>
                 <span>₹{calculateTotal().toLocaleString()}</span>
               </div>
+              
+              {calculateDiscount() > 0 && (
+                <div className="calc-row discount">
+                  <span>Coupon Discount (20%)</span>
+                  <span className="discount-amount">-₹{calculateDiscount().toLocaleString()}</span>
+                </div>
+              )}
+              
               <div className="calc-row">
                 <span>Tax (18% GST)</span>
-                <span>₹{(calculateTotal() * 0.18).toLocaleString()}</span>
+                <span>₹{(Math.round((calculateTotal() - calculateDiscount()) * 0.18)).toLocaleString()}</span>
               </div>
               <div className="calc-row">
                 <span>Delivery Charges</span>
                 <span className="free-text">FREE</span>
               </div>
+              
+              {calculateDiscount() > 0 && (
+                <div className="coupon-applied">
+                  <span className="coupon-badge">✓ First Order Discount Applied!</span>
+                </div>
+              )}
+              
               <hr />
               <div className="calc-row total">
                 <span>Total Amount</span>
-                <span>₹{(calculateTotal() * 1.18).toLocaleString()}</span>
+                <span>₹{calculateFinalTotal().toLocaleString()}</span>
               </div>
             </div>
           </div>

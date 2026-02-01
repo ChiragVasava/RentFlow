@@ -1,6 +1,7 @@
 const Quotation = require('../models/Quotation');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
+const User = require('../models/User');
 
 // Category-based tax rates (in percentage)
 const TAX_RATES = {
@@ -250,7 +251,20 @@ exports.createQuotation = async (req, res) => {
 
     // Calculate weighted average tax rate for display
     const effectiveTaxRate = subtotal > 0 ? (totalTaxAmount / subtotal) * 100 : 18;
-    const totalAmount = subtotal + totalTaxAmount;
+
+    // Check if user is eligible for coupon discount
+    const user = await User.findById(req.user.id);
+    let discountAmount = 0;
+
+    // Apply 20% coupon discount if user has a coupon and hasn't used it
+    if (user.couponCode && !user.hasUsedCoupon) {
+      discountAmount = Math.round(subtotal * 0.20); // 20% discount
+    }
+
+    // Calculate total after discount (tax is applied to discounted amount)
+    const discountedSubtotal = subtotal - discountAmount;
+    const finalTaxAmount = Math.round(discountedSubtotal * (effectiveTaxRate / 100));
+    const totalAmount = discountedSubtotal + finalTaxAmount;
 
     // Set validity (7 days from now)
     const validUntil = new Date();
@@ -261,7 +275,8 @@ exports.createQuotation = async (req, res) => {
       vendor: vendorId,
       itemsCount: quotationItems.length,
       subtotal,
-      taxAmount: totalTaxAmount,
+      discountAmount,
+      taxAmount: finalTaxAmount,
       totalAmount
     });
 
@@ -271,7 +286,9 @@ exports.createQuotation = async (req, res) => {
       items: quotationItems,
       subtotal,
       taxRate: effectiveTaxRate,
-      taxAmount: totalTaxAmount,
+      taxAmount: finalTaxAmount,
+      discountAmount: discountAmount,
+      discountType: discountAmount > 0 ? 'coupon' : null,
       totalAmount,
       notes,
       validUntil,

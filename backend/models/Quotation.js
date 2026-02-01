@@ -55,6 +55,15 @@ const quotationSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  discountAmount: {
+    type: Number,
+    default: 0
+  },
+  discountType: {
+    type: String,
+    enum: ['coupon', 'promo', 'loyalty'],
+    default: null
+  },
   totalAmount: {
     type: Number,
     required: true

@@ -333,6 +333,35 @@
   color: #10b981 !important;
 }
 
+.calc-row.discount {
+  color: #059669;
+}
+
+.calc-row.discount span:first-child {
+  color: #059669;
+}
+
+.discount-amount {
+  color: #059669 !important;
+  font-weight: 700 !important;
+}
+
+.coupon-applied {
+  margin: 1rem 0;
+  text-align: center;
+}
+
+.coupon-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
+}
+
 .order-calculations hr {
   border: none;
   border-top: 2px solid #e2e8f0;

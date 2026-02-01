@@ -15,7 +15,7 @@ const Home = () => {
             track inventory, and grow your rental business.
           </p>
           <div className="hero-buttons">
-            <Link to="/products" className="btn btn-primary btn-large">
+            <Link to="/products" className="btn btn-primary btn-large" id="aakash">
               Browse Products
             </Link>
             <Link to="/register" className="btn btn-outline btn-large">

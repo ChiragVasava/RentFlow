@@ -1096,8 +1096,13 @@ mongoose.connect(process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://
       const createdUsers = [];
       
       for (const userData of sampleUsers) {
-        // Don't hash password manually - let the User model's pre-save hook do it
-        const user = await User.create(userData);
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(userData.password, salt);
+        
+        const user = await User.create({
+          ...userData,
+          password: hashedPassword
+        });
         createdUsers.push(user);
         console.log(`✅ Created ${user.role}: ${user.email}`);
       }
