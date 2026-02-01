@@ -130,7 +130,7 @@ const Register = () => {
       <div className="auth-container">
         <div className="auth-card wide">
           <h2 className="auth-title">Create Account</h2>
-          <p className="auth-subtitle">Join RentalHub today</p>
+          <p className="auth-subtitle">Join RentalFlow today</p>
 
           <form onSubmit={handleSubmit} className="auth-form">
             <div className="form-row">

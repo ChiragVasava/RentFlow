@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { FaShoppingCart, FaUser, FaSignOutAlt, FaTachometerAlt } from 'react-icons/fa';
+import { FaShoppingCart, FaSignOutAlt, FaTachometerAlt } from 'react-icons/fa';
 import './Navbar.css';
 
 const Navbar = () => {
@@ -70,6 +70,7 @@ const Navbar = () => {
                   <li><Link to="/dashboard" className="navbar-link">
                     <FaTachometerAlt /> Dashboard
                   </Link></li>
+                  <li><Link to="/admin/products" className="navbar-link">Products</Link></li>
                   <li><Link to="/admin/users" className="navbar-link">Users</Link></li>
                 </>
               )}

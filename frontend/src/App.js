@@ -43,6 +43,7 @@ import VendorReturns from './pages/vendor/VendorReturns';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ManageUsers from './pages/admin/ManageUsers';
 import Settings from './pages/admin/Settings';
+import AdminProducts from './pages/admin/AdminProducts';
 import ProductForm from './pages/ProductForm';
 
 import './App.css';
@@ -265,6 +266,12 @@ function AppRoutes() {
             <Route path="/admin/users" element={
               <ProtectedRoute roles={['admin']}>
                 <ManageUsers />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/admin/products" element={
+              <ProtectedRoute roles={['admin']}>
+                <AdminProducts />
               </ProtectedRoute>
             } />
 

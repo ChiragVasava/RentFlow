@@ -28,7 +28,7 @@ const Home = () => {
       {/* Features Section */}
       <section className="features">
         <div className="container">
-          <h2 className="section-title">Why Choose RentalHub?</h2>
+          <h2 className="section-title">Why Choose RentalFlow?</h2>
           <div className="features-grid">
             <div className="feature-card">
               <div className="feature-icon primary">
