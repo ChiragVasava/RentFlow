@@ -232,7 +232,9 @@ const QuotationDetails = () => {
   const canSubmit = user?.role === 'customer' && quotation.status === 'draft';
   const canApprove = (user?.role === 'vendor' || user?.role === 'admin') && quotation.status === 'pending';
   const canReject = (user?.role === 'vendor' || user?.role === 'admin') && quotation.status === 'pending';
-  const canConvert = user?.role === 'customer' && quotation.status === 'approved' && !quotation.convertedToOrder;
+  const canConvert = (user?.role === 'customer' || user?.role === 'vendor' || user?.role === 'admin') && 
+                     quotation.status === 'approved' && 
+                     !quotation.convertedToOrder;
   const canCounterOffer = (
     (user?.role === 'vendor' && quotation.status === 'pending') ||
     (user?.role === 'customer' && quotation.status === 'pending' && quotation.counterOffers && quotation.counterOffers.length > 0)
@@ -522,7 +524,7 @@ const QuotationDetails = () => {
         )}
         
         {/* Debug Info - Remove after testing */}
-        {process.env.NODE_ENV === 'development' && (
+        {process.env.NODE_ENV === 'development' && user?.role !== 'vendor' && (
           <div style={{ marginTop: '2rem', padding: '1rem', background: '#f3f4f6', borderRadius: '8px', fontSize: '0.85rem' }}>
             <h4>Debug Info:</h4>
             <p>User Role: {user?.role}</p>
@@ -532,7 +534,7 @@ const QuotationDetails = () => {
             {!canConvert && (
               <p style={{ color: 'red', fontWeight: 'bold' }}>
                 Button hidden because: {
-                  user?.role !== 'customer' ? 'Not a customer' :
+                  (user?.role !== 'customer' && user?.role !== 'vendor' && user?.role !== 'admin') ? 'Not a customer, vendor, or admin' :
                   quotation?.status !== 'approved' ? `Status is "${quotation?.status}" (needs "approved")` :
                   quotation?.convertedToOrder ? 'Already converted to order' :
                   'Unknown reason'

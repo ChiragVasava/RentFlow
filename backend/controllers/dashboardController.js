@@ -37,14 +37,14 @@ exports.getDashboardStats = async (req, res) => {
       status: { $in: ['active', 'picked_up'] }
     });
 
-    // Total Revenue
+    // Total Revenue (include both paid and partial payments)
     const revenueData = await Invoice.aggregate([
       {
         $match: req.user.role === 'vendor' 
-          ? { vendor: req.user._id, status: 'paid' }
+          ? { vendor: req.user._id, status: { $in: ['paid', 'partial'] }, paidAmount: { $gt: 0 } }
           : req.user.role === 'customer'
-          ? { customer: req.user._id, status: 'paid' }
-          : { status: 'paid' }
+          ? { customer: req.user._id, status: { $in: ['paid', 'partial'] }, paidAmount: { $gt: 0 } }
+          : { status: { $in: ['paid', 'partial'] }, paidAmount: { $gt: 0 } }
       },
       {
         $group: {
@@ -149,7 +149,7 @@ exports.getDashboardStats = async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(5);
 
-    // Monthly Revenue Trend (last 6 months)
+    // Monthly Revenue Trend (last 6 months) - include partial payments
     const sixMonthsAgo = moment().subtract(6, 'months').toDate();
     
     const monthlyRevenue = await Invoice.aggregate([
@@ -157,7 +157,8 @@ exports.getDashboardStats = async (req, res) => {
         $match: {
           ...(req.user.role === 'vendor' ? { vendor: req.user._id } : {}),
           ...(req.user.role === 'customer' ? { customer: req.user._id } : {}),
-          status: 'paid',
+          status: { $in: ['paid', 'partial'] },
+          paidAmount: { $gt: 0 },
           invoiceDate: { $gte: sixMonthsAgo }
         }
       },

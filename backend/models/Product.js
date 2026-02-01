@@ -96,6 +96,11 @@ const productSchema = new mongoose.Schema({
     material: String
   },
   tags: [String],
+  taxRate: {
+    type: Number,
+    min: 0,
+    max: 100
+  },
   isPublished: {
     type: Boolean,
     default: false

@@ -10,7 +10,7 @@ const {
 } = require('../controllers/userController');
 const { protect, authorize } = require('../middleware/auth');
 
-router.get('/', protect, authorize('admin'), getAllUsers);
+router.get('/', protect, authorize('admin', 'vendor'), getAllUsers);
 router.get('/:id', protect, getUser);
 router.put('/profile', protect, updateProfile);
 router.put('/:id', protect, authorize('admin'), updateUser);

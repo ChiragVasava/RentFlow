@@ -276,9 +276,11 @@ const InvoiceDetails = () => {
             <thead>
               <tr>
                 <th>Description</th>
+                <th>Category</th>
                 <th>Rental Period</th>
                 <th className="right">Qty</th>
                 <th className="right">Rate</th>
+                <th className="right">Tax</th>
                 <th className="right">Amount</th>
               </tr>
             </thead>
@@ -289,10 +291,14 @@ const InvoiceDetails = () => {
                     <div className="product-name">{item.productName}</div>
                   </td>
                   <td>
+                    <div className="product-category">{item.category || '-'}</div>
+                  </td>
+                  <td>
                     <div className="rental-period">{item.rentalPeriod}</div>
                   </td>
                   <td className="right">{item.quantity}</td>
                   <td className="right">{formatCurrency(item.pricePerUnit)}</td>
+                  <td className="right">{item.taxRate ? `${item.taxRate}%` : '-'}</td>
                   <td className="right">{formatCurrency(item.totalPrice)}</td>
                 </tr>
               ))}
@@ -318,11 +324,11 @@ const InvoiceDetails = () => {
             {invoice.cgst > 0 && (
               <>
                 <div className="summary-row">
-                  <span className="summary-label">CGST ({invoice.taxRate / 2}%):</span>
+                  <span className="summary-label">CGST ({(invoice.taxRate / 2).toFixed(2)}%):</span>
                   <span className="summary-value">{formatCurrency(invoice.cgst)}</span>
                 </div>
                 <div className="summary-row">
-                  <span className="summary-label">SGST ({invoice.taxRate / 2}%):</span>
+                  <span className="summary-label">SGST ({(invoice.taxRate / 2).toFixed(2)}%):</span>
                   <span className="summary-value">{formatCurrency(invoice.sgst)}</span>
                 </div>
               </>

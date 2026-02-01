@@ -75,6 +75,9 @@ const ProductForm = () => {
         category: product.category || '',
         vendor: product.vendor?._id || user?.id,
         vendorName: product.vendor?.companyName || user?.companyName || '',
+        availabilityType: product.availabilityType || 'rent',
+        isRentable: product.isRentable !== undefined ? product.isRentable : true,
+        isSellable: product.isSellable !== undefined ? product.isSellable : false,
         isPublished: product.isPublished || false,
         images: product.images || [],
         rentalPricing: product.rentalPricing || { hourly: 0, daily: 0, weekly: 0 },
@@ -173,12 +176,19 @@ const ProductForm = () => {
       return;
     }
 
+    // Validate that at least one pricing is set based on availability type
+    if (formData.availabilityType === 'sale' || formData.availabilityType === 'both') {
+      if (!formData.salesPrice || formData.salesPrice <= 0) {
+        toast.error('Please set a sales price for products available for sale');
+        return;
+      }
+    }
+
     try {
       setLoading(true);
       
       const productData = {
         ...formData,
-        isRentable: formData.productType === 'goods',
         vendor: formData.vendor || user?.id,
         attributes: attributes.filter(attr => attr.name).map(attr => ({
           name: attr.name,

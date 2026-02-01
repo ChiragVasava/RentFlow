@@ -643,13 +643,7 @@ const ManageProducts = () => {
                       <p className="status-info">
                         <FaInfoCircle /> Only admin can publish products
                       </p>
-                      <div className="status-badge">
-                        {formData.isPublished ? (
-                          <><FaEye /> Published</>
-                        ) : (
-                          <><FaEyeSlash /> Draft</>
-                        )}
-                      </div>
+                      
                     </div>
                   </div>
                 </div>

@@ -83,6 +83,10 @@
   border: none;
 }
 
+.order-info-card * {
+  color: white;
+}
+
 .order-title-section {
   display: flex;
   justify-content: space-between;
@@ -97,12 +101,14 @@
   display: flex;
   align-items: center;
   gap: 1rem;
+  color: white;
 }
 
 .order-date {
   font-size: 1rem;
   opacity: 0.9;
   margin: 0;
+  color: white;
 }
 
 .status-badges {
@@ -141,17 +147,20 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 0.3rem;
+  color: white;
 }
 
 .party-name {
   font-size: 1.1rem;
   font-weight: 600;
   margin-bottom: 0.3rem;
+  color: white !important;
 }
 
 .party-email {
   font-size: 0.9rem;
   opacity: 0.9;
+  color: white !important;
 }
 
 /* Status Badges */

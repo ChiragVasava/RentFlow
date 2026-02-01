@@ -18,8 +18,8 @@ router.get('/', protect, getAllSaleOrders);
 
 // @route   POST /api/sale-orders
 // @desc    Create new sale order
-// @access  Private (Customer)
-router.post('/', protect, authorize('customer'), createSaleOrder);
+// @access  Private (Customer, Vendor, Admin)
+router.post('/', protect, authorize('customer', 'vendor', 'admin'), createSaleOrder);
 
 // @route   GET /api/sale-orders/:id
 // @desc    Get single sale order

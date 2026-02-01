@@ -1,6 +1,23 @@
 const Invoice = require('../models/Invoice');
 const Order = require('../models/Order');
 const SaleOrder = require('../models/SaleOrder');
+const Product = require('../models/Product');
+
+// Category-based tax rates (in percentage)
+const TAX_RATES = {
+  'Electronics': 18,
+  'Furniture': 12,
+  'Entertainment': 18,
+  'Transportation': 12,
+  'Tools & Equipment': 18,
+  'Party Supplies': 12,
+  'default': 18
+};
+
+// Helper function to get tax rate by category
+const getTaxRateByCategory = (category) => {
+  return TAX_RATES[category] || TAX_RATES['default'];
+};
 
 // @desc    Get all invoices
 // @route   GET /api/invoices
@@ -132,7 +149,15 @@ exports.createInvoice = async (req, res) => {
       });
     }
 
-    // Prepare invoice items
+    // Fetch complete product details to get categories and tax rates
+    const productIds = order.items.map(item => item.product._id || item.product);
+    const products = await Product.find({ _id: { $in: productIds } });
+    const productMap = {};
+    products.forEach(p => {
+      productMap[p._id.toString()] = p;
+    });
+
+    // Prepare invoice items with tax rates
     const invoiceItems = order.items.map(item => {
       let rentalPeriod = 'N/A';
       
@@ -142,17 +167,23 @@ exports.createInvoice = async (req, res) => {
         rentalPeriod = `${new Date(order.startDate).toLocaleDateString()} - ${new Date(order.endDate).toLocaleDateString()}`;
       }
 
+      const productId = item.product._id || item.product;
+      const product = productMap[productId.toString()];
+      const itemTaxRate = product?.taxRate || getTaxRateByCategory(product?.category);
+
       return {
-        product: item.product._id,
-        productName: item.product.name,
+        product: productId,
+        productName: item.product.name || product?.name,
         quantity: item.quantity,
         pricePerUnit: item.pricePerUnit || item.price,
         totalPrice: item.totalPrice || (item.price * item.quantity),
-        rentalPeriod
+        rentalPeriod,
+        taxRate: itemTaxRate,
+        category: product?.category
       };
     });
 
-    // Calculate taxes (CGST + SGST for same state, IGST for different state)
+    // Calculate taxes based on individual item categories (CGST + SGST for same state, IGST for different state)
     const { discount = 0, discountType = 'fixed', paymentType = 'full', initialPayment = 0 } = req.body;
     
     let subtotal = order.subtotal || order.totalAmount;
@@ -165,11 +196,25 @@ exports.createInvoice = async (req, res) => {
     }
 
     const subtotalAfterDiscount = subtotal - discountAmount;
-    const taxRate = order.taxRate || 18;
-    const taxAmount = (subtotalAfterDiscount * taxRate) / 100;
-    const cgst = taxAmount / 2;
-    const sgst = taxAmount / 2;
-    const totalAmount = subtotalAfterDiscount + taxAmount;
+    
+    // Calculate weighted average tax rate or calculate tax per item
+    let totalTaxAmount = 0;
+    invoiceItems.forEach(item => {
+      const itemSubtotal = item.totalPrice;
+      const itemDiscount = (itemSubtotal / subtotal) * discountAmount;
+      const itemSubtotalAfterDiscount = itemSubtotal - itemDiscount;
+      const itemTax = (itemSubtotalAfterDiscount * item.taxRate) / 100;
+      totalTaxAmount += itemTax;
+    });
+
+    // Calculate weighted average tax rate for display
+    const effectiveTaxRate = subtotalAfterDiscount > 0 
+      ? (totalTaxAmount / subtotalAfterDiscount) * 100 
+      : 18;
+    
+    const cgst = totalTaxAmount / 2;
+    const sgst = totalTaxAmount / 2;
+    const totalAmount = subtotalAfterDiscount + totalTaxAmount;
 
     const invoice = await Invoice.create({
       order: orderId,
@@ -179,11 +224,11 @@ exports.createInvoice = async (req, res) => {
       subtotal: order.subtotal || order.totalAmount,
       discount: discountAmount,
       discountType,
-      taxRate,
+      taxRate: effectiveTaxRate,
       cgst,
       sgst,
       igst: 0,
-      taxAmount,
+      taxAmount: totalTaxAmount,
       totalAmount,
       securityDeposit: order.securityDeposit || 0,
       lateReturnFee: order.lateReturnFee || 0,

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaStar, FaShoppingCart, FaSearch } from 'react-icons/fa';
+import { FaStar, FaShoppingCart, FaSearch, FaHeart, FaRegHeart } from 'react-icons/fa';
 import { productsAPI } from '../utils/api';
 import './Products.css';
 
@@ -128,27 +128,16 @@ const Products = () => {
             >
               <div className="product-image">
                 <img src={getPrimaryImage(product)} alt={product.name} />
-                {product.specifications?.condition && (
-                  <span className={`condition-badge ${product.specifications.condition}`}>
-                    {product.specifications.condition}
-                  </span>
-                )}
+                <button className="wishlist-icon-btn">
+                  <FaRegHeart />
+                </button>
               </div>
               <div className="product-info">
                 <div className="product-category">{product.category}</div>
                 <h3 className="product-name">{product.name}</h3>
-                <p className="product-description">
-                  {product.description?.substring(0, 80)}...
-                </p>
-
-                {product.ratings && product.ratings.count > 0 && (
-                  <div className="product-rating">
-                    <div className="stars">
-                      {renderRating(product.ratings.average)}
-                    </div>
-                    <span className="rating-text">
-                      {product.ratings.average.toFixed(1)} ({product.ratings.count})
-                    </span>
+                {product.specifications?.condition && (
+                  <div className="product-condition">
+                    Product Condition: <span className="condition-value">{product.specifications.condition}</span>
                   </div>
                 )}
 

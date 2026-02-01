@@ -32,6 +32,7 @@ exports.getAllSaleOrders = async (req, res) => {
       .populate('customer', 'name email companyName phone')
       .populate('vendor', 'name companyName email phone')
       .populate('items.product', 'name images category salesPrice')
+      .populate('linkedOrder', 'orderNumber status')
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -56,7 +57,8 @@ exports.getSaleOrder = async (req, res) => {
     const saleOrder = await SaleOrder.findById(req.params.id)
       .populate('customer', 'name email companyName gstin phone address')
       .populate('vendor', 'name email companyName gstin phone address')
-      .populate('items.product', 'name images category salesPrice specifications');
+      .populate('items.product', 'name images category salesPrice specifications')
+      .populate('linkedOrder', 'orderNumber status paymentStatus');
 
     if (!saleOrder) {
       return res.status(404).json({
@@ -91,10 +93,10 @@ exports.getSaleOrder = async (req, res) => {
 
 // @desc    Create sale order
 // @route   POST /api/sale-orders
-// @access  Private (Customer)
+// @access  Private (Customer, Vendor, Admin)
 exports.createSaleOrder = async (req, res) => {
   try {
-    const { items, shippingAddress, billingAddress, paymentMethod, notes } = req.body;
+    const { items, shippingAddress, billingAddress, paymentMethod, notes, customerId, expectedDeliveryDate } = req.body;
 
     console.log('Creating sale order for user:', req.user.id);
     console.log('Sale order items received:', JSON.stringify(items, null, 2));
@@ -106,9 +108,27 @@ exports.createSaleOrder = async (req, res) => {
       });
     }
 
+    // Determine customer and vendor based on user role
+    let customer, vendor;
+    
+    if (req.user.role === 'vendor' || req.user.role === 'admin') {
+      // Vendor/Admin creating order for a customer
+      if (!customerId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Customer ID is required when vendor creates a sale order'
+        });
+      }
+      customer = customerId;
+      vendor = req.user.role === 'vendor' ? req.user.id : null; // Will be set from product if admin
+    } else {
+      // Customer creating their own order
+      customer = req.user.id;
+      vendor = null; // Will be set from product
+    }
+
     // Validate and process items
     const processedItems = [];
-    let vendor = null;
 
     for (const item of items) {
       const product = await Product.findById(item.productId);
@@ -120,13 +140,8 @@ exports.createSaleOrder = async (req, res) => {
         });
       }
 
-      // Check if product is available for sale
-      if (!product.isSellable && product.availabilityType !== 'sale' && product.availabilityType !== 'both') {
-        return res.status(400).json({
-          success: false,
-          message: `Product ${product.name} is not available for sale`
-        });
-      }
+      // Note: Sale Orders can include ANY products (rent/sale/both) as they are 
+      // acknowledgement documents for customer requests, not actual sales transactions
 
       // Check inventory
       if (product.quantityOnHand < item.quantity) {
@@ -161,17 +176,29 @@ exports.createSaleOrder = async (req, res) => {
     // Generate order number
     const orderNumber = await SaleOrder.generateOrderNumber();
 
+    // Get customer details for addresses if not provided
+    const User = require('../models/User');
+    const customerUser = await User.findById(customer);
+    
+    if (!customerUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'Customer not found'
+      });
+    }
+
     // Create sale order
     const saleOrder = new SaleOrder({
       orderNumber,
-      customer: req.user.id,
+      customer,
       vendor,
       items: processedItems,
-      shippingAddress: shippingAddress || req.user.address,
-      billingAddress: billingAddress || shippingAddress || req.user.address,
+      shippingAddress: shippingAddress || customerUser.address,
+      billingAddress: billingAddress || shippingAddress || customerUser.address,
       paymentMethod: paymentMethod || 'cash',
       notes,
-      status: 'draft'
+      expectedDeliveryDate: expectedDeliveryDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      status: req.user.role === 'vendor' ? 'confirmed' : 'draft' // Vendor-created orders are pre-confirmed
     });
 
     // Calculate totals

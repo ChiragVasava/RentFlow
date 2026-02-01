@@ -2,6 +2,22 @@ const Quotation = require('../models/Quotation');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
 
+// Category-based tax rates (in percentage)
+const TAX_RATES = {
+  'Electronics': 18,
+  'Furniture': 12,
+  'Entertainment': 18,
+  'Transportation': 12,
+  'Tools & Equipment': 18,
+  'Party Supplies': 12,
+  'default': 18
+};
+
+// Helper function to get tax rate by category
+const getTaxRateByCategory = (category) => {
+  return TAX_RATES[category] || TAX_RATES['default'];
+};
+
 // @desc    Get all quotations
 // @route   GET /api/quotations
 // @access  Private
@@ -217,16 +233,24 @@ exports.createQuotation = async (req, res) => {
         rentalEndDate: item.rentalEndDate,
         rentalDuration,
         pricePerUnit,
-        totalPrice
+        totalPrice,
+        taxRate: product.taxRate || getTaxRateByCategory(product.category),
+        category: product.category
       });
 
       subtotal += totalPrice;
     }
 
-    // Calculate tax
-    const taxRate = 18; // 18% GST
-    const taxAmount = (subtotal * taxRate) / 100;
-    const totalAmount = subtotal + taxAmount;
+    // Calculate tax based on individual item categories
+    let totalTaxAmount = 0;
+    quotationItems.forEach(item => {
+      const itemTax = (item.totalPrice * item.taxRate) / 100;
+      totalTaxAmount += itemTax;
+    });
+
+    // Calculate weighted average tax rate for display
+    const effectiveTaxRate = subtotal > 0 ? (totalTaxAmount / subtotal) * 100 : 18;
+    const totalAmount = subtotal + totalTaxAmount;
 
     // Set validity (7 days from now)
     const validUntil = new Date();
@@ -237,7 +261,7 @@ exports.createQuotation = async (req, res) => {
       vendor: vendorId,
       itemsCount: quotationItems.length,
       subtotal,
-      taxAmount,
+      taxAmount: totalTaxAmount,
       totalAmount
     });
 
@@ -246,8 +270,8 @@ exports.createQuotation = async (req, res) => {
       vendor: vendorId,
       items: quotationItems,
       subtotal,
-      taxRate,
-      taxAmount,
+      taxRate: effectiveTaxRate,
+      taxAmount: totalTaxAmount,
       totalAmount,
       notes,
       validUntil,

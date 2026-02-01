@@ -118,6 +118,12 @@ exports.createReturn = async (req, res) => {
       }
     });
 
+    // Handle return address - could be string or object
+    let returnAddress = order.shippingAddress;
+    if (typeof returnAddress === 'string') {
+      returnAddress = { street: returnAddress };
+    }
+
     const returnDoc = await Return.create({
       order: orderId,
       customer: order.customer,
@@ -128,7 +134,7 @@ exports.createReturn = async (req, res) => {
       lateDays,
       lateReturnFee,
       totalDamageFee,
-      returnAddress: order.shippingAddress,
+      returnAddress: returnAddress || {},
       notes,
       status: 'processing'
     });
@@ -192,6 +198,17 @@ exports.completeReturn = async (req, res) => {
 
     returnDoc.status = 'completed';
     await returnDoc.save();
+
+    // Increment stock for each returned item
+    const populatedReturn = await Return.findById(returnDoc._id).populate('items.product');
+    for (let item of populatedReturn.items) {
+      const product = await Product.findById(item.product._id);
+      if (product) {
+        product.quantityOnHand += item.quantity;
+        await product.save();
+        console.log(`Stock incremented for ${product.name}: +${item.quantity} (New stock: ${product.quantityOnHand})`);
+      }
+    }
 
     res.status(200).json({
       success: true,

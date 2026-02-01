@@ -2,6 +2,7 @@ const Order = require('../models/Order');
 const Quotation = require('../models/Quotation');
 const Product = require('../models/Product');
 const Pickup = require('../models/Pickup');
+const SaleOrder = require('../models/SaleOrder');
 
 // @desc    Get all orders
 // @route   GET /api/orders
@@ -177,6 +178,43 @@ exports.createOrder = async (req, res) => {
           }
         }
       });
+    }
+
+    // Auto-generate Sale Order for vendor
+    try {
+      const generateOrderNumber = () => {
+        const timestamp = Date.now().toString();
+        const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+        return `SO${timestamp.slice(-6)}${random}`;
+      };
+
+      const saleOrder = await SaleOrder.create({
+        orderNumber: generateOrderNumber(),
+        linkedOrder: order._id, // Link to the rental order
+        customer: order.customer,
+        vendor: order.vendor,
+        items: order.items.map(item => ({
+          product: item.product,
+          quantity: item.quantity,
+          pricePerUnit: item.pricePerUnit,
+          totalPrice: item.totalPrice,
+          deliveryDate: item.rentalStartDate, // Use rental start as delivery date
+          notes: `Auto-generated from Order ${order.orderNumber}`
+        })),
+        subtotal: order.subtotal,
+        taxAmount: order.taxAmount,
+        totalAmount: order.totalAmount,
+        shippingAddress: order.shippingAddress,
+        billingAddress: order.shippingAddress, // Same as shipping for rental orders
+        notes: `Automatically generated sale order for rental Order ${order.orderNumber}`,
+        status: 'confirmed', // Auto-confirm since it's from accepted quotation
+        paymentStatus: order.paymentStatus
+      });
+
+      console.log(`Auto-created Sale Order ${saleOrder.orderNumber} for Order ${order.orderNumber}`);
+    } catch (saleOrderError) {
+      console.error('Error creating automatic sale order:', saleOrderError);
+      // Don't fail the order creation if sale order fails
     }
 
     await order.populate('customer', 'name email companyName');

@@ -4,24 +4,22 @@ import { toast } from 'react-toastify';
 import { 
   FaShoppingCart, 
   FaEye, 
-  FaEdit, 
-  FaTrash, 
   FaPlus,
   FaFilter,
   FaSearch,
-  FaSort,
   FaCreditCard,
   FaTruck,
   FaCheck,
-  FaTimes
+  FaTimes,
+  FaEdit,
+  FaSync
 } from 'react-icons/fa';
-import { saleOrdersAPI } from '../utils/api';
-import { useAuth } from '../context/AuthContext';
-import './SaleOrders.css';
+import { saleOrdersAPI } from '../../utils/api';
+import '../../pages/SaleOrders.css';
+import './VendorSaleOrders.css';
 
-const SaleOrders = () => {
+const VendorSaleOrders = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [saleOrders, setSaleOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -30,21 +28,18 @@ const SaleOrders = () => {
 
   useEffect(() => {
     fetchSaleOrders();
-  }, [statusFilter, paymentFilter]);
-
-  // Auto-refresh sale orders every 30 seconds to show new auto-generated orders
-  useEffect(() => {
+    
+    // Set up auto-refresh every 30 seconds to catch new auto-generated orders
     const interval = setInterval(() => {
-      console.log('Auto-refreshing sale orders...');
       fetchSaleOrders();
-    }, 30000); // 30 seconds
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [statusFilter, paymentFilter]);
 
   const fetchSaleOrders = async () => {
     try {
-      console.log('Fetching sale orders with params:', { statusFilter, paymentFilter });
+      console.log('Fetching sale orders...');
       const params = {};
       if (statusFilter) params.status = statusFilter;
       if (paymentFilter) params.paymentStatus = paymentFilter;
@@ -55,14 +50,12 @@ const SaleOrders = () => {
     } catch (error) {
       console.error('Error fetching sale orders:', error);
       toast.error('Failed to fetch sale orders');
-      setSaleOrders([]); // Fallback to empty array
     } finally {
       setLoading(false);
     }
   };
 
   const handleRefresh = () => {
-    console.log('Manual refresh triggered');
     setLoading(true);
     fetchSaleOrders();
   };
@@ -70,7 +63,7 @@ const SaleOrders = () => {
   const filteredSaleOrders = saleOrders.filter(order =>
     order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (order.customer?.name && order.customer.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (order.vendor?.name && order.vendor.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    (order.customer?.companyName && order.customer.companyName.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const getStatusBadge = (status) => {
@@ -113,17 +106,8 @@ const SaleOrders = () => {
     navigate(`/sale-orders/${orderId}`);
   };
 
-  const handleDeleteOrder = async (orderId) => {
-    if (!window.confirm('Are you sure you want to delete this sale order?')) return;
-
-    try {
-      await saleOrdersAPI.delete(orderId);
-      toast.success('Sale order deleted successfully');
-      fetchSaleOrders();
-    } catch (error) {
-      console.error('Error deleting sale order:', error);
-      toast.error(error.response?.data?.message || 'Failed to delete sale order');
-    }
+  const handleCreateOrder = () => {
+    navigate('/vendor/sale-orders/create');
   };
 
   if (loading) {
@@ -140,9 +124,17 @@ const SaleOrders = () => {
       <div className="page-header">
         <div className="header-content">
           <h1 className="page-title">
-            <FaShoppingCart /> Sale Orders
+            <FaShoppingCart /> My Sale Orders
           </h1>
-          <p className="page-subtitle">Manage your sale orders and track deliveries</p>
+          <p className="page-subtitle">Manage and track all your customer sale orders</p>
+        </div>
+        <div className="header-actions">
+          <button onClick={handleRefresh} className="refresh-btn" disabled={loading}>
+            <FaSync spin={loading} /> Refresh
+          </button>
+          <button onClick={handleCreateOrder} className="primary-btn">
+            <FaPlus /> Create Sale Order
+          </button>
         </div>
       </div>
 
@@ -152,7 +144,7 @@ const SaleOrders = () => {
           <FaSearch className="search-icon" />
           <input
             type="text"
-            placeholder="Search by order number, customer, or vendor..."
+            placeholder="Search by order number or customer name..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="search-input"
@@ -199,8 +191,11 @@ const SaleOrders = () => {
             <p>
               {searchTerm || statusFilter || paymentFilter
                 ? 'No sale orders match your current filters.'
-                : `You don't have any sale orders yet.`}
+                : 'You haven\'t created any sale orders yet. Click "Create Sale Order" to get started.'}
             </p>
+            <button onClick={handleCreateOrder} className="primary-btn">
+              <FaPlus /> Create Your First Sale Order
+            </button>
           </div>
         ) : (
           <div className="orders-grid">
@@ -220,16 +215,9 @@ const SaleOrders = () => {
                 </div>
 
                 <div className="order-details">
-                  {user?.role === 'vendor' && order.customer && (
-                    <div className="party-info">
-                      <strong>Customer:</strong> {order.customer.name || order.customer.companyName}
-                    </div>
-                  )}
-                  {user?.role === 'customer' && order.vendor && (
-                    <div className="party-info">
-                      <strong>Vendor:</strong> {order.vendor.name || order.vendor.companyName}
-                    </div>
-                  )}
+                  <div className="party-info">
+                    <strong>Customer:</strong> {order.customer?.name || order.customer?.companyName || 'N/A'}
+                  </div>
 
                   <div className="order-items">
                     <strong>Items:</strong> {order.items?.length || 0} item(s)
@@ -255,16 +243,6 @@ const SaleOrders = () => {
                   >
                     <FaEye /> View
                   </button>
-
-                  {order.status === 'draft' && user?.role === 'customer' && (
-                    <button
-                      onClick={() => handleDeleteOrder(order._id)}
-                      className="action-btn delete-btn"
-                      title="Delete"
-                    >
-                      <FaTrash /> Delete
-                    </button>
-                  )}
                 </div>
               </div>
             ))}
@@ -275,4 +253,4 @@ const SaleOrders = () => {
   );
 };
 
-export default SaleOrders;
+export default VendorSaleOrders;

@@ -43,10 +43,15 @@ exports.getAllProducts = async (req, res) => {
       query.isPublished = true;
     }
 
-    // If vendor is logged in, show only their products (both published and unpublished)
-    // Admin can see all products regardless of publish status
+    // If vendor is querying their own products, show all (published and unpublished)
+    // Otherwise, show only published products
     if (req.user && req.user.role === 'vendor') {
-      query.vendor = req.user.id;
+      // If vendor filter is provided and it's their own ID, show all their products
+      const isQueryingOwnProducts = vendor && vendor === req.user.id;
+      if (!isQueryingOwnProducts) {
+        // Only show published products if they're viewing other vendors' products
+        query.isPublished = true;
+      }
     }
 
     console.log('Product query:', query);

@@ -60,6 +60,7 @@ const Navbar = () => {
                   </Link></li>
                   <li><Link to="/vendor/products" className="navbar-link">My Products</Link></li>
                   <li><Link to="/vendor/quotations" className="navbar-link">Quotations</Link></li>
+                  <li><Link to="/vendor/sale-orders" className="navbar-link">Sale Orders</Link></li>
                   <li><Link to="/orders" className="navbar-link">My Orders</Link></li>
                 </>
               )}
@@ -81,6 +82,12 @@ const Navbar = () => {
                   <li><Link to="/profile" className="dropdown-item">Profile</Link></li>
                   <li><Link to="/orders" className="dropdown-item">My Orders</Link></li>
                   <li><Link to="/sale-orders" className="dropdown-item">Sale Orders</Link></li>
+                  {user?.role === 'vendor' && (
+                    <>
+                      <li><Link to="/vendor/pickups" className="dropdown-item">Pickups</Link></li>
+                      <li><Link to="/vendor/returns" className="dropdown-item">Returns</Link></li>
+                    </>
+                  )}
                   <li><Link to="/invoices" className="dropdown-item">Invoices</Link></li>
                   <li><hr className="dropdown-divider" /></li>
                   <li>

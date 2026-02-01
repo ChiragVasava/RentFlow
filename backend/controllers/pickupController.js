@@ -1,5 +1,6 @@
 const Pickup = require('../models/Pickup');
 const Order = require('../models/Order');
+const Product = require('../models/Product');
 
 // @desc    Get all pickups
 // @route   GET /api/pickups
@@ -83,6 +84,13 @@ exports.createPickup = async (req, res) => {
       });
     }
 
+    // Handle pickup address - could be string or object
+    let pickupAddress = order.shippingAddress;
+    if (typeof pickupAddress === 'string') {
+      // If it's a string, convert to object format
+      pickupAddress = { street: pickupAddress };
+    }
+
     const pickup = await Pickup.create({
       order: orderId,
       customer: order.customer,
@@ -93,7 +101,7 @@ exports.createPickup = async (req, res) => {
         condition: 'good'
       })),
       scheduledDate,
-      pickupAddress: order.shippingAddress,
+      pickupAddress: pickupAddress || {},
       instructions,
       notes,
       status: 'scheduled'
@@ -142,11 +150,24 @@ exports.completePickup = async (req, res) => {
     pickup.pickupDate = new Date();
     await pickup.save();
 
-    // Update order status
+    // Update order status to active (items are now with customer)
     await Order.findByIdAndUpdate(pickup.order, {
-      status: 'picked_up',
+      status: 'active',
       pickupDate: new Date()
     });
+
+    // Decrement stock for each picked up item
+    for (let item of pickup.items) {
+      const product = await Product.findById(item.product);
+      if (product) {
+        product.quantityOnHand -= item.quantity;
+        if (product.quantityOnHand < 0) {
+          product.quantityOnHand = 0;
+        }
+        await product.save();
+        console.log(`Stock decremented for ${product.name}: -${item.quantity} (New stock: ${product.quantityOnHand})`);
+      }
+    }
 
     res.status(200).json({
       success: true,

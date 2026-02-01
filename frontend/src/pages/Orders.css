@@ -249,6 +249,42 @@
   }
 }
 
+/* Pickup and Return Button Styles */
+.action-btn.pickup-btn {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.action-btn.pickup-btn:hover {
+  background: #1976d2;
+  color: white;
+}
+
+.action-btn.return-btn {
+  background: #fff3e0;
+  color: #f57c00;
+}
+
+.action-btn.return-btn:hover {
+  background: #f57c00;
+  color: white;
+}
+
+.status-badge.status-picked-up {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.status-badge.status-in-use {
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
+.status-badge.status-returned {
+  background: #e8f5e9;
+  color: #388e3c;
+}
+
 /* Loading Spinner */
 .loading-spinner {
   text-align: center;

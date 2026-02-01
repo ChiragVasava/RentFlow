@@ -34,6 +34,10 @@ import ManageProducts from './pages/vendor/ManageProducts';
 import VendorOrders from './pages/vendor/VendorOrders';
 import VendorDashboard from './pages/vendor/VendorDashboard';
 import VendorQuotations from './pages/VendorQuotations';
+import VendorSaleOrders from './pages/vendor/VendorSaleOrders';
+import CreateSaleOrder from './pages/vendor/CreateSaleOrder';
+import VendorPickups from './pages/vendor/VendorPickups';
+import VendorReturns from './pages/vendor/VendorReturns';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ManageUsers from './pages/admin/ManageUsers';
 import Settings from './pages/admin/Settings';
@@ -198,6 +202,42 @@ function AppRoutes() {
             <Route path="/vendor/orders" element={
               <ProtectedRoute roles={['vendor', 'admin']}>
                 <VendorOrders />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/vendor/sale-orders" element={
+              <ProtectedRoute roles={['vendor', 'admin']}>
+                <VendorSaleOrders />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/vendor/sale-orders/create" element={
+              <ProtectedRoute roles={['vendor', 'admin']}>
+                <CreateSaleOrder />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/vendor/pickups" element={
+              <ProtectedRoute roles={['vendor', 'admin']}>
+                <VendorPickups />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/vendor/pickups/:id" element={
+              <ProtectedRoute roles={['vendor', 'admin']}>
+                <VendorPickups />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/vendor/returns" element={
+              <ProtectedRoute roles={['vendor', 'admin']}>
+                <VendorReturns />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/vendor/returns/:id" element={
+              <ProtectedRoute roles={['vendor', 'admin']}>
+                <VendorReturns />
               </ProtectedRoute>
             } />
 

@@ -32,7 +32,8 @@ const VendorDashboard = () => {
       
       // Fetch real stats
       const response = await dashboardAPI.getStats();
-      setStats(response.data.stats);
+      const statsData = response.data.stats;
+      setStats(statsData);
       
       // Fetch vendor's products
       const productsRes = await productsAPI.getMyProducts();
@@ -51,8 +52,22 @@ const VendorDashboard = () => {
       }));
       setCategoryData(catData);
       
-      // Generate sample data for demonstration
-      generateSampleData(products);
+      // Use real monthly revenue data from backend
+      if (statsData.monthlyRevenue && statsData.monthlyRevenue.length > 0) {
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const formattedRevenue = statsData.monthlyRevenue.map(item => ({
+          month: monthNames[item._id.month - 1],
+          revenue: item.revenue || 0,
+          orders: item.count || 0
+        }));
+        setRevenueData(formattedRevenue);
+      } else {
+        // No revenue data available
+        setRevenueData([]);
+      }
+      
+      // Generate top products based on real data (if available in stats, otherwise use sample)
+      generateTopProducts(products, statsData);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
@@ -60,21 +75,13 @@ const VendorDashboard = () => {
     }
   };
 
-  const generateSampleData = (products) => {
-    // Generate last 6 months revenue data (sample)
-    const months = ['Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan'];
-    const revenue = months.map((month, index) => ({
-      month,
-      revenue: Math.floor(Math.random() * 50000) + 20000,
-      orders: Math.floor(Math.random() * 30) + 10
-    }));
-    setRevenueData(revenue);
-    
-    // Generate top rented products (sample based on real products)
+  const generateTopProducts = (products, statsData) => {
+    // For now, use sample data as we don't have product-level analytics yet
+    // TODO: Add product-level analytics to backend
     const topProds = products.slice(0, 5).map((product, index) => ({
       name: product.name,
-      rentals: Math.floor(Math.random() * 50) + 10,
-      revenue: Math.floor(Math.random() * 30000) + 5000,
+      rentals: 0, // Will be updated when backend provides this data
+      revenue: 0, // Will be updated when backend provides this data
       image: product.images?.[0]?.url || product.images?.[0] || 'https://via.placeholder.com/150'
     }));
     setTopProducts(topProds);
@@ -91,8 +98,8 @@ const VendorDashboard = () => {
     );
   }
 
-  const totalRevenue = revenueData.reduce((sum, item) => sum + item.revenue, 0);
-  const avgOrderValue = totalRevenue / (stats?.totalOrders || 1);
+  const totalRevenue = stats?.totalRevenue || 0;
+  const avgOrderValue = stats?.totalOrders > 0 ? totalRevenue / stats.totalOrders : 0;
   const growthRate = revenueData.length >= 2 
     ? ((revenueData[revenueData.length - 1].revenue - revenueData[revenueData.length - 2].revenue) / revenueData[revenueData.length - 2].revenue * 100).toFixed(1)
     : 0;

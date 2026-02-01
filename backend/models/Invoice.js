@@ -29,7 +29,9 @@ const invoiceSchema = new mongoose.Schema({
     quantity: Number,
     pricePerUnit: Number,
     totalPrice: Number,
-    rentalPeriod: String
+    rentalPeriod: String,
+    taxRate: Number,
+    category: String
   }],
   subtotal: {
     type: Number,
