@@ -134,10 +134,20 @@
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
   min-width: 200px;
-  margin-top: var(--spacing-sm);
+  margin-top: 5px;
   list-style: none;
   padding: var(--spacing-sm) 0;
   z-index: 1000;
+}
+
+.dropdown-menu::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  right: 10px;
+  left: 0;
+  height: 5px;
+  background: transparent;
 }
 
 .navbar-dropdown:hover .dropdown-menu,

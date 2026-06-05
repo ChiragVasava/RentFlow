@@ -3,8 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
 import { quotationsAPI } from '../utils/api';
-import { 
-  FaFileInvoice, FaEye, FaClock, FaCheckCircle, FaTimesCircle, 
+import {
+  FaFileInvoice, FaEye, FaClock, FaCheckCircle, FaTimesCircle,
   FaExchangeAlt, FaHourglassHalf, FaEdit, FaTrash, FaPaperPlane
 } from 'react-icons/fa';
 import './Quotations.css';
@@ -78,19 +78,32 @@ const Quotations = () => {
   };
 
   const handleConvertToOrder = async (quotation) => {
+    // Check if quotation is approved
+    if (quotation.status !== 'approved') {
+      toast.error(`Cannot convert quotation with status: ${quotation.status}. Only approved quotations can be converted.`);
+      return;
+    }
+
     if (!window.confirm('Convert this approved quotation to an order?')) {
       return;
     }
 
     try {
       setConvertingId(quotation._id);
+      console.log('Converting quotation:', quotation._id, 'Status:', quotation.status);
       const response = await quotationsAPI.convertToOrder(quotation._id);
+      console.log('Conversion response:', response.data);
       toast.success('Order created successfully');
       fetchQuotations();
-      navigate(`/orders/${response.data.order._id}`);
+      // Navigate to orders list instead of specific order (which might not exist yet)
+      setTimeout(() => {
+        navigate('/orders');
+      }, 1500);
     } catch (error) {
       console.error('Error converting quotation:', error);
-      toast.error(error.response?.data?.message || 'Failed to create order');
+      console.error('Error response:', error.response?.data);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to create order';
+      toast.error(errorMessage);
     } finally {
       setConvertingId(null);
     }
@@ -143,7 +156,7 @@ const Quotations = () => {
             <FaFileInvoice /> {user?.role === 'vendor' ? 'Quotation Requests' : 'My Quotations'}
           </h1>
           <p className="page-subtitle">
-            {user?.role === 'vendor' 
+            {user?.role === 'vendor'
               ? 'Review and manage customer quotation requests'
               : 'Create and manage rental quotations'
             }
@@ -202,7 +215,7 @@ const Quotations = () => {
           <FaFileInvoice className="empty-icon" />
           <h3>No Quotations Found</h3>
           <p>
-            {activeFilter === 'all' 
+            {activeFilter === 'all'
               ? 'You don\'t have any quotations yet'
               : `No ${activeFilter} quotations`
             }
@@ -268,7 +281,7 @@ const Quotations = () => {
 
               {/* Actions */}
               <div className="quotation-actions">
-                <Link 
+                <Link
                   to={`/quotations/${quotation._id}`}
                   className="btn btn-outline btn-sm"
                 >

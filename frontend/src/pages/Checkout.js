@@ -28,7 +28,7 @@ const Checkout = () => {
   });
 
   // Payment Form
-  const [paymentMethod, setPaymentMethod] = useState('cod'); // cod, card, upi
+  const [paymentMethod, setPaymentMethod] = useState('cod'); // cod, card, upi, razorpay
   const [cardDetails, setCardDetails] = useState({
     cardNumber: '',
     cardName: '',
@@ -38,10 +38,11 @@ const Checkout = () => {
   const [upiId, setUpiId] = useState('');
 
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [razorpayLoaded, setRazorpayLoaded] = useState(false);
 
   useEffect(() => {
     console.log('Checkout loaded. Cart items:', cartItems);
-    
+
     if (cartItems.length === 0) {
       navigate('/cart');
       return;
@@ -56,12 +57,25 @@ const Checkout = () => {
       }
       return isInvalid;
     });
-    
+
     if (hasInvalidItems) {
       toast.error('Some items in your cart have invalid data. Please remove and re-add them.');
       setTimeout(() => navigate('/cart'), 2000);
     }
   }, [cartItems, navigate]);
+
+  // Load Razorpay script
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => setRazorpayLoaded(true);
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
 
   const calculateTotal = () => {
     return cartItems.reduce((total, item) => total + (item.price || 0), 0);
@@ -69,11 +83,11 @@ const Checkout = () => {
 
   const handleAddressSubmit = (e) => {
     e.preventDefault();
-    
+
     // Validate address
-    if (!shippingAddress.fullName || !shippingAddress.phone || 
-        !shippingAddress.addressLine1 || !shippingAddress.city || 
-        !shippingAddress.state || !shippingAddress.pincode) {
+    if (!shippingAddress.fullName || !shippingAddress.phone ||
+      !shippingAddress.addressLine1 || !shippingAddress.city ||
+      !shippingAddress.state || !shippingAddress.pincode) {
       toast.error('Please fill all required address fields');
       return;
     }
@@ -93,6 +107,58 @@ const Checkout = () => {
     setStep(2);
   };
 
+  const handleRazorpayPayment = () => {
+    if (!razorpayLoaded) {
+      toast.error('Payment gateway is loading. Please wait...');
+      return;
+    }
+
+    const totalAmount = calculateTotal() * 1.18; // Including GST
+    const amountInPaise = Math.round(totalAmount * 100); // Convert to paise
+
+    const options = {
+      key: 'rzp_test_RCMxb4YGoO59yx', // Razorpay test key
+      amount: amountInPaise,
+      currency: 'INR',
+      name: 'RentFlow',
+      description: 'Rental Order Payment',
+      image: 'https://via.placeholder.com/100x100?text=RentFlow',
+      prefill: {
+        name: shippingAddress.fullName,
+        email: user?.email || '',
+        contact: shippingAddress.phone
+      },
+      notes: {
+        address: `${shippingAddress.addressLine1}, ${shippingAddress.city}, ${shippingAddress.state} - ${shippingAddress.pincode}`
+      },
+      theme: {
+        color: '#3399cc'
+      },
+      handler: function (response) {
+        console.log('Razorpay payment successful:', response);
+        toast.success('Payment successful! Processing your order...');
+        // Payment successful, place the order
+        handlePlaceOrder('razorpay', response.razorpay_payment_id);
+      },
+      modal: {
+        ondismiss: function () {
+          toast.info('Payment cancelled');
+          setLoading(false);
+        }
+      }
+    };
+
+    const rzp = new window.Razorpay(options);
+
+    rzp.on('payment.failed', function (response) {
+      console.error('Razorpay payment failed:', response.error);
+      toast.error(`Payment failed: ${response.error.description}`);
+      setLoading(false);
+    });
+
+    rzp.open();
+  };
+
   const handlePaymentSubmit = (e) => {
     e.preventDefault();
 
@@ -102,8 +168,8 @@ const Checkout = () => {
     }
 
     if (paymentMethod === 'card') {
-      if (!cardDetails.cardNumber || !cardDetails.cardName || 
-          !cardDetails.expiryDate || !cardDetails.cvv) {
+      if (!cardDetails.cardNumber || !cardDetails.cardName ||
+        !cardDetails.expiryDate || !cardDetails.cvv) {
         toast.error('Please fill all card details');
         return;
       }
@@ -120,12 +186,16 @@ const Checkout = () => {
         toast.error('Please enter UPI ID');
         return;
       }
+    } else if (paymentMethod === 'razorpay') {
+      setLoading(true);
+      handleRazorpayPayment();
+      return;
     }
 
     handlePlaceOrder();
   };
 
-  const handlePlaceOrder = async () => {
+  const handlePlaceOrder = async (paymentType = paymentMethod, paymentId = null) => {
     setLoading(true);
 
     try {
@@ -134,7 +204,7 @@ const Checkout = () => {
 
       // Validate and prepare cart items
       const validatedItems = [];
-      
+
       for (const item of cartItems) {
         console.log('Processing cart item:', item);
 
@@ -146,7 +216,7 @@ const Checkout = () => {
         }
 
         let productId = item.product._id || item.product;
-        
+
         // If productId is still not valid, try to extract it
         if (!productId || typeof productId !== 'string') {
           console.error('Invalid product in cart:', item);
@@ -166,7 +236,7 @@ const Checkout = () => {
         // Verify the product exists by fetching it
         try {
           await productsAPI.getOne(productId);
-          
+
           // Backend expects rentalStartDate and rentalEndDate (not startDate/endDate)
           const quotationItem = {
             product: productId,
@@ -186,9 +256,10 @@ const Checkout = () => {
       }
 
       // Backend will calculate subtotal, tax, and total automatically
+      const paymentInfo = paymentId ? `${paymentType.toUpperCase()} (Payment ID: ${paymentId})` : paymentType.toUpperCase();
       const quotationData = {
         items: validatedItems,
-        notes: `Shipping Address: ${shippingAddress.addressLine1}, ${shippingAddress.city}, ${shippingAddress.state} - ${shippingAddress.pincode}. Payment Method: ${paymentMethod.toUpperCase()}`
+        notes: `Shipping Address: ${shippingAddress.addressLine1}, ${shippingAddress.city}, ${shippingAddress.state} - ${shippingAddress.pincode}. Payment Method: ${paymentInfo}`
       };
 
       console.log('Creating quotation with data:', quotationData);
@@ -199,7 +270,7 @@ const Checkout = () => {
 
       setStep(3);
       toast.success('Order placed successfully! Redirecting to your quotations...');
-      
+
       // Clear cart after successful quotation
       setTimeout(() => {
         clearCart();
@@ -219,7 +290,7 @@ const Checkout = () => {
 
   const getPrimaryImage = (product) => {
     if (!product) return 'https://via.placeholder.com/80x80?text=No+Image';
-    
+
     if (product.images && product.images.length > 0) {
       const primaryImage = product.images.find(img => img.isPrimary);
       return primaryImage?.url || product.images[0]?.url || product.images[0];
@@ -290,7 +361,7 @@ const Checkout = () => {
               <h2 className="section-title">
                 <FaMapMarkerAlt /> Shipping Address
               </h2>
-              
+
               <form onSubmit={handleAddressSubmit}>
                 <div className="form-grid">
                   <div className="form-group">
@@ -298,7 +369,7 @@ const Checkout = () => {
                     <input
                       type="text"
                       value={shippingAddress.fullName}
-                      onChange={(e) => setShippingAddress({...shippingAddress, fullName: e.target.value})}
+                      onChange={(e) => setShippingAddress({ ...shippingAddress, fullName: e.target.value })}
                       required
                     />
                   </div>
@@ -308,7 +379,7 @@ const Checkout = () => {
                     <input
                       type="tel"
                       value={shippingAddress.phone}
-                      onChange={(e) => setShippingAddress({...shippingAddress, phone: e.target.value})}
+                      onChange={(e) => setShippingAddress({ ...shippingAddress, phone: e.target.value })}
                       placeholder="10-digit mobile number"
                       required
                     />
@@ -320,7 +391,7 @@ const Checkout = () => {
                   <input
                     type="text"
                     value={shippingAddress.addressLine1}
-                    onChange={(e) => setShippingAddress({...shippingAddress, addressLine1: e.target.value})}
+                    onChange={(e) => setShippingAddress({ ...shippingAddress, addressLine1: e.target.value })}
                     placeholder="House No., Building Name"
                     required
                   />
@@ -331,7 +402,7 @@ const Checkout = () => {
                   <input
                     type="text"
                     value={shippingAddress.addressLine2}
-                    onChange={(e) => setShippingAddress({...shippingAddress, addressLine2: e.target.value})}
+                    onChange={(e) => setShippingAddress({ ...shippingAddress, addressLine2: e.target.value })}
                     placeholder="Road Name, Area, Colony"
                   />
                 </div>
@@ -342,7 +413,7 @@ const Checkout = () => {
                     <input
                       type="text"
                       value={shippingAddress.city}
-                      onChange={(e) => setShippingAddress({...shippingAddress, city: e.target.value})}
+                      onChange={(e) => setShippingAddress({ ...shippingAddress, city: e.target.value })}
                       required
                     />
                   </div>
@@ -352,7 +423,7 @@ const Checkout = () => {
                     <input
                       type="text"
                       value={shippingAddress.state}
-                      onChange={(e) => setShippingAddress({...shippingAddress, state: e.target.value})}
+                      onChange={(e) => setShippingAddress({ ...shippingAddress, state: e.target.value })}
                       required
                     />
                   </div>
@@ -362,7 +433,7 @@ const Checkout = () => {
                     <input
                       type="text"
                       value={shippingAddress.pincode}
-                      onChange={(e) => setShippingAddress({...shippingAddress, pincode: e.target.value})}
+                      onChange={(e) => setShippingAddress({ ...shippingAddress, pincode: e.target.value })}
                       placeholder="6-digit pincode"
                       required
                     />
@@ -428,6 +499,20 @@ const Checkout = () => {
                       <span>Pay using Google Pay, PhonePe, Paytm, etc.</span>
                     </div>
                   </label>
+
+                  <label className={`payment-option ${paymentMethod === 'razorpay' ? 'selected' : ''}`}>
+                    <input
+                      type="radio"
+                      name="payment"
+                      value="razorpay"
+                      checked={paymentMethod === 'razorpay'}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                    />
+                    <div className="payment-info">
+                      <strong>Razorpay</strong>
+                      <span>Pay online - Card, UPI, Net Banking, Wallets</span>
+                    </div>
+                  </label>
                 </div>
 
                 {paymentMethod === 'card' && (
@@ -437,7 +522,7 @@ const Checkout = () => {
                       <input
                         type="text"
                         value={cardDetails.cardNumber}
-                        onChange={(e) => setCardDetails({...cardDetails, cardNumber: e.target.value})}
+                        onChange={(e) => setCardDetails({ ...cardDetails, cardNumber: e.target.value })}
                         placeholder="1234 5678 9012 3456"
                         maxLength="19"
                       />
@@ -448,7 +533,7 @@ const Checkout = () => {
                       <input
                         type="text"
                         value={cardDetails.cardName}
-                        onChange={(e) => setCardDetails({...cardDetails, cardName: e.target.value})}
+                        onChange={(e) => setCardDetails({ ...cardDetails, cardName: e.target.value })}
                         placeholder="Name on card"
                       />
                     </div>
@@ -459,7 +544,7 @@ const Checkout = () => {
                         <input
                           type="text"
                           value={cardDetails.expiryDate}
-                          onChange={(e) => setCardDetails({...cardDetails, expiryDate: e.target.value})}
+                          onChange={(e) => setCardDetails({ ...cardDetails, expiryDate: e.target.value })}
                           placeholder="MM/YY"
                           maxLength="5"
                         />
@@ -470,7 +555,7 @@ const Checkout = () => {
                         <input
                           type="text"
                           value={cardDetails.cvv}
-                          onChange={(e) => setCardDetails({...cardDetails, cvv: e.target.value})}
+                          onChange={(e) => setCardDetails({ ...cardDetails, cvv: e.target.value })}
                           placeholder="123"
                           maxLength="4"
                         />

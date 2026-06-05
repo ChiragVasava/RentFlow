@@ -1,7 +1,14 @@
 node_modules/
+# Root .env contains secrets (MongoDB URI, JWT secret) - never commit
 .env
 .DS_Store
+
+# Frontend build output
 frontend/build
 frontend/node_modules
+
 uploads/
 *.log
+
+# Note: frontend/.env is intentionally committed.
+# It only contains REACT_APP_API_URL (public backend URL, no secrets).
